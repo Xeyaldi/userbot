@@ -1,116 +1,93 @@
 import os
 import asyncio
-import requests
-from bs4 import BeautifulSoup
+import importlib
+import time
 from telethon import TelegramClient, events
-from telethon.sessions import StringSession 
-from telethon.tl.functions.messages import GetHistoryRequest
+from telethon.sessions import StringSession
 
-# Heroku Settings
+# Heroku Ayarları
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION = os.environ.get("SESSION_STRING")
 
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
-async def get_combot_links():
-    """Combot-dan ilk 10 səhifədəki (~500 qrup) Türk qruplarını yığır"""
-    groups = []
-    # Real brauzer kimi görünmək üçün headers
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
-    } 
-    
-    for page in range(1, 11): # 1-dən 10-cu səhifəyə qədər
-        url = f"https://combot.org/telegram/top/groups/tr?page={page}"
-        try:
-            # Sayta sorğu göndəririk
-            res = requests.get(url, headers=headers, timeout=15)
-            if res.status_code != 200:
-                continue
-                
-            soup = BeautifulSoup(res.text, 'html.parser')
-            for a in soup.find_all('a', href=True):
-                href = a['href']
-                if "t.me/" in href:
-                    # Linkdən istifadəçi adını təmizləyirik
-                    user = href.split('/')[-1].replace('+', '').split('?')[0]
-                    if user not in groups and user not in ["combot", "addmetelegram", "share"]:
-                        groups.append(user)
-        except Exception as e:
-            print(f"Səhifə {page} oxunmadı: {e}")
-            continue
-    return groups
+# AFK statusu üçün dəyişən
+AFK_REJIM = False
+AFK_SEBEB = ""
 
-@client.on(events.NewMessage(pattern=r'/axdar (.+)'))
-async def search_handler(event):
-    # Yalnız sən komanda verə bilərsən
-    if not event.out:
-        return
+# Plugin qovluğu
+if not os.path.exists("plugins"):
+    os.makedirs("plugins")
 
-    target = event.pattern_match.group(1).strip()
-    try:
-        target_id = int(target)
-    except ValueError:
-        await event.edit("❌ Lütfən düzgün bir **ID** (rəqəm) daxil edin.")
-        return
+@client.on(events.NewMessage(pattern=r'\.burdasangaga'))
+async def burdasan(event):
+    if event.out:
+        await event.edit("Hə burdayam gaga")
 
-    status_msg = await event.edit("🔄 **Axtarış hazırlığı...**\n🌐 Combot-dan qruplar çəkilir...")
-    
-    # Qrupları çəkirik
-    group_list = await get_combot_links()
-    
-    if not group_list:
-        await status_msg.edit("❌ Combot siyahısı boşdur! Sayt blok qoymuş ola bilər. Bir az sonra yoxlayın.")
-        return
+@client.on(events.NewMessage(pattern=r'\.ters (.+)'))
+async def ters_cevir(event):
+    if event.out:
+        text = event.pattern_match.group(1)
+        await event.edit(text[::-1])
 
-    total = len(group_list)
-    await status_msg.edit(f"🔎 **{total} qrup tapıldı.**\n📊 Hər qrupda son mesajlar analiz edilir...\n\n⏳ *Bu proses 10-15 dəqiqə çəkə bilər.*")
+@client.on(events.NewMessage(pattern=r'\.del'))
+async def mesaj_sil(event):
+    if event.out and event.is_reply:
+        reply = await event.get_reply_message()
+        await reply.delete()
+        await event.delete()
 
-    found_in = []
-    
-    # Qrupları tək-tək yoxlayırıq
-    for index, username in enumerate(group_list, start=1):
-        try:
-            # get_messages daha stabil işləyir (limit 300 qoydum ki, ban riski azalsın)
-            # Sən bunu limit=1000 edə bilərsən, amma yavaşlayacaq
-            async for msg in client.iter_messages(username, limit=300):
-                if msg.from_id and hasattr(msg.from_id, 'user_id'):
-                    if msg.from_id.user_id == target_id:
-                        found_in.append(f"@{username}")
-                        break # Bu qrupda tapıldısa növbəti qrupa keç
-            
-            # Hər 10 qrupdan bir mesajı yeniləyirik ki, botun donmadığını görəsən
-            if index % 10 == 0:
-                await status_msg.edit(
-                    f"🔄 **Yoxlanılır:** `{index}/{total}` qrup\n"
-                    f"✅ **Tapılan:** `{len(found_in)}` qrup\n"
-                    f"📍 **Son baxılan:** @{username}"
-                )
-            
-            # Telegram-dan qovulmamaq üçün kiçik fasilə
-            await asyncio.sleep(1.2)
-            
-        except Exception as e:
-            # Qrup bağlıdırsa və ya banlıyıqsa keçirik
-            continue
+@client.on(events.NewMessage(pattern=r'\.info'))
+async def user_info(event):
+    if event.out and event.is_reply:
+        reply = await event.get_reply_message()
+        u_id = reply.from_id.user_id if hasattr(reply.from_id, 'user_id') else "Tapılmadı"
+        await event.edit(f"👤 **İstifadəçi:**\n🆔 **ID:** `{u_id}`")
 
-    # Nəticəni göndəririk
-    if found_in:
-        final_text = f"🔥 **ID `{target_id}` üçün tapılan qruplar:**\n\n"
-        final_text += "\n".join(found_in)
-        await status_msg.edit(final_text)
-    else:
-        await status_msg.edit(f"😔 `{target_id}` son 300 mesaj daxilində bu qruplarda tapılmadı.")
+@client.on(events.NewMessage(pattern=r'\.saat'))
+async def canli_saat(event):
+    if event.out:
+        for _ in range(15): # 15 saniyəlik canlı saat
+            current_time = time.strftime("%H:%M:%S")
+            await event.edit(f"🕒 **Saat:** `{current_time}`")
+            await asyncio.sleep(1)
 
-async def start_bot():
+@client.on(events.NewMessage(pattern=r'\.afk ?(.*)'))
+async def afk_aktiv(event):
+    global AFK_REJIM, AFK_SEBEB
+    if event.out:
+        AFK_REJIM = True
+        AFK_SEBEB = event.pattern_match.group(1)
+        await event.edit(f"💤 **AFK rejimi aktiv edildi.**\nSəbəb: {AFK_SEBEB if AFK_SEBEB else 'Qeyd edilməyib.'}")
+
+@client.on(events.NewMessage(incoming=True))
+async def afk_cavab(event):
+    global AFK_REJIM
+    if AFK_REJIM and event.is_private:
+        await event.respond(f"🤖 **Mən hazırda AFK-yam (aktiv deyiləm).**\n\n📝 **Səbəb:** {AFK_SEBEB if AFK_SEBEB else 'Yoxdur.'}")
+
+@client.on(events.NewMessage(pattern=r'\.online'))
+async def afk_deaktiv(event):
+    global AFK_REJIM
+    if event.out:
+        AFK_REJIM = False
+        await event.edit("✅ **Mən qayıtdım! AFK rejimi söndürüldü.**")
+
+@client.on(events.NewMessage(pattern=r'\.pluginyukle'))
+async def plugin_yukle(event):
+    if not event.out or not event.is_reply: return
+    reply_message = await event.get_reply_message()
+    if reply_message.file and reply_message.file.name.endswith(".py"):
+        path = os.path.join("plugins", reply_message.file.name)
+        await client.download_media(reply_message, path)
+        await event.edit(f"✅ `{reply_message.file.name}` yükləndi!")
+        # Plugin aktivləşdirmə kodu buraya gələ bilər
+
+async def main():
     await client.start()
-    print("✅ Bot uğurla işə düşdü! Telegram-da /axdar ID yazaraq yoxla.")
+    print("🚀 Userbot tam funksiyalarla işə düşdü!")
     await client.run_until_disconnected()
 
 if __name__ == '__main__':
-    try:
-        asyncio.run(start_bot())
-    except Exception as e:
-        print(f"Bot çökdü: {e}")
+    asyncio.run(main())
