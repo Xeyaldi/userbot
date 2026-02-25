@@ -3,6 +3,7 @@ import asyncio
 import importlib
 import time
 import ast
+import sys
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
@@ -18,8 +19,9 @@ AFK_REJIM = False
 AFK_SEBEB = ""
 
 # Plugin qovluğu
-if not os.path.exists("plugins"):
-    os.makedirs("plugins")
+PLUGINS_DIR = "plugins"
+if not os.path.exists(PLUGINS_DIR):
+    os.makedirs(PLUGINS_DIR)
 
 @client.on(events.NewMessage(pattern=r'\.burdasangaga'))
 async def burdasan(event):
@@ -29,12 +31,10 @@ async def burdasan(event):
 @client.on(events.NewMessage(pattern=r'\.ters(?:\s+(.*))?'))
 async def ters_cevir(event):
     if not event.out: return
-    
     text = event.pattern_match.group(1)
     if event.is_reply:
         reply = await event.get_reply_message()
         text = reply.text
-    
     if text:
         await event.edit(text[::-1])
     else:
@@ -92,10 +92,17 @@ async def plugin_yukle(event):
     reply_message = await event.get_reply_message()
     if reply_message.file and reply_message.file.name.endswith(".py"):
         plugin_name = reply_message.file.name
-        path = os.path.join("plugins", plugin_name)
+        path = os.path.join(PLUGINS_DIR, plugin_name)
         await client.download_media(reply_message, path)
         
         try:
+            # Dinamik yükləmə mexanizmi
+            module_name = plugin_name[:-3]
+            spec = importlib.util.spec_from_file_location(module_name, path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Kod analizi (istifadə qaydası üçün)
             with open(path, "r", encoding="utf-8") as f:
                 tree = ast.parse(f.read())
             
@@ -111,13 +118,24 @@ async def plugin_yukle(event):
             p_info = "\n".join(komandalar) if komandalar else "İstifadə qaydası tapılmadı."
             await event.edit(f"✅ **Plugin yükləndi gaga!**\n\n🛠 **İstifadə qaydası (Komandalar):**\n{p_info}")
             
-        except Exception:
-            await event.edit(f"✅ **Plugin yükləndi gaga!**")
+        except Exception as e:
+            await event.edit(f"❌ **Plugin yüklənmədi gaga!**\n⚠️ **Xəta:** `{str(e)}`")
     else:
         await event.edit("❌ Bu düzgün bir plugin faylı deyil gaga!")
 
 async def main():
     await client.start()
+    
+    # Köhnə pluginləri açılışda yükləyirik
+    for file in os.listdir(PLUGINS_DIR):
+        if file.endswith(".py"):
+            try:
+                module_name = file[:-3]
+                spec = importlib.util.spec_from_file_location(module_name, os.path.join(PLUGINS_DIR, file))
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+            except: continue
+
     print("🚀 Userbot Hazırdır!")
     await client.run_until_disconnected()
 
