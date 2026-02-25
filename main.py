@@ -64,7 +64,7 @@ async def search_handler(event):
             continue
 
     if found_in:
-        result = **🔥Tapıldığı qruplar:**\n" + "\n".join(found_in)
+        result = "**🔥Tapıldığı qruplar:**\n" + "\n".join(found_in)
         await status_msg.edit(result)
     else:
         await status_msg.edit("😔 Təəssüf ki, aktiv mesaj tapılmadı.")
