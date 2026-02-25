@@ -1,6 +1,7 @@
 import os
 import asyncio
 import importlib
+import importlib.util  # Xətanın həlli məhz bu sətirdir!
 import time
 import ast
 import sys
@@ -22,28 +23,25 @@ PLUGINS_DIR = "plugins"
 if not os.path.exists(PLUGINS_DIR):
     os.makedirs(PLUGINS_DIR)
 
-# --- YENİ: MENYU KOMANDASI ---
-
+# --- MENYU KOMANDASI ---
 @client.on(events.NewMessage(pattern=r'\.xeyalinmenusu'))
 async def menyu(event):
     if event.out:
         menyu_metni = (
             "🌟 **Xəyalın Userbot Menyusu** 🌟\n\n"
             "🛠 **Mövcud Komandalar:**\n"
-            "• `.ters` - Yazını tərsinə çevirir (reply ilə də işləyir)\n"
-            "• `.del` - Seçilən mesajı və komandanı silir\n"
-            "• `.info` - İstifadəçi ID-sini göstərir\n"
-            "• `.saat` - 15 saniyəlik canlı saat\n"
+            "• `.ters` - Yazını tərsinə çevirir\n"
+            "• `.del` - Mesajı silir\n"
+            "• `.info` - ID göstərir\n"
+            "• `.saat` - Canlı saat\n"
             "• `.afk [səbəb]` - AFK rejimini açır\n"
-            "• `.online` - AFK rejimini bağlayır\n"
-            "• `.pluginyukle` - Yeni plugin əlavə edir\n"
-            "• `.burdasangaga` - Botun vəziyyəti\n\n"
-            "💡 *Hər hansı bir plugini yükləmək üçün .py faylına reply atın gaga!*"
+            "• `.online` - AFK bağlayır\n"
+            "• `.pluginyukle` - Plugin əlavə edir\n"
+            "• `.burdasangaga` - Botu yoxlayır\n"
         )
         await event.edit(menyu_metni)
 
-# --- SƏNİN KÖHNƏ KOMANDALARIN (SİLİNMƏYİB) ---
-
+# --- ƏSAS KOMANDALAR ---
 @client.on(events.NewMessage(pattern=r'\.burdasangaga'))
 async def burdasan(event):
     if event.out: await event.edit("Hə burdayam gaga")
@@ -98,26 +96,29 @@ async def afk_deaktiv(event):
         AFK_REJIM = False
         await event.edit("✅ AFK söndürüldü.")
 
-# --- PLUGİN YÜKLƏMƏ VƏ AKTİVLƏŞDİRMƏ (SİLİNMƏYİB) ---
-
+# --- PLUGİN YÜKLƏMƏ VƏ AKTİVLƏŞDİRMƏ ---
 @client.on(events.NewMessage(pattern=r'\.pluginyukle'))
 async def plugin_yukle(event):
     if not event.out or not event.is_reply:
         await event.edit("❌ Lütfən bir `.py` faylına reply atın gaga!")
         return
+        
     reply_message = await event.get_reply_message()
     if reply_message.file and reply_message.file.name.endswith(".py"):
         p_name = reply_message.file.name
         p_path = os.path.join(PLUGINS_DIR, p_name)
         await client.download_media(reply_message, p_path)
+        
         try:
             module_name = p_name[:-3]
             spec = importlib.util.spec_from_file_location(module_name, p_path)
             module = importlib.util.module_from_spec(spec)
             sys.modules[module_name] = module
             spec.loader.exec_module(module)
+            
             with open(p_path, "r", encoding="utf-8") as f:
                 tree = ast.parse(f.read())
+            
             komandalar = []
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call) and getattr(node.func, 'attr', '') == 'on':
@@ -126,7 +127,9 @@ async def plugin_yukle(event):
                             for kw in arg.keywords:
                                 if kw.arg == 'pattern' and isinstance(kw.value, ast.Constant):
                                     komandalar.append(f"`{kw.value.value}`")
+            
             await event.edit(f"✅ **Plugin yükləndi gaga!**\n\n🛠 **Komandalar:**\n{chr(10).join(komandalar) if komandalar else 'Tapılmadı.'}")
+            
         except Exception as e:
             await event.edit(f"❌ **Plugin yüklənmədi gaga!**\n⚠️ Xəta: `{str(e)}`")
     else:
@@ -134,15 +137,17 @@ async def plugin_yukle(event):
 
 async def main():
     await client.start()
-    for f in os.listdir(PLUGINS_DIR):
-        if f.endswith(".py"):
-            try:
-                m_name = f[:-3]
-                spec = importlib.util.spec_from_file_location(m_name, os.path.join(PLUGINS_DIR, f))
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[m_name] = module
-                spec.loader.exec_module(module)
-            except: continue
+    # Açılışda qovluqdakı pluginləri yüklə
+    if os.path.exists(PLUGINS_DIR):
+        for f in os.listdir(PLUGINS_DIR):
+            if f.endswith(".py"):
+                try:
+                    m_name = f[:-3]
+                    spec = importlib.util.spec_from_file_location(m_name, os.path.join(PLUGINS_DIR, f))
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules[m_name] = module
+                    spec.loader.exec_module(module)
+                except: continue
     print("🚀 Userbot Hazırdır!")
     await client.run_until_disconnected()
 
