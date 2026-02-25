@@ -2,6 +2,7 @@ import os
 import asyncio
 import importlib
 import time
+import ast
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
@@ -25,11 +26,19 @@ async def burdasan(event):
     if event.out:
         await event.edit("Hə burdayam gaga")
 
-@client.on(events.NewMessage(pattern=r'\.ters (.+)'))
+@client.on(events.NewMessage(pattern=r'\.ters(?:\s+(.*))?'))
 async def ters_cevir(event):
-    if event.out:
-        text = event.pattern_match.group(1)
+    if not event.out: return
+    
+    text = event.pattern_match.group(1)
+    if event.is_reply:
+        reply = await event.get_reply_message()
+        text = reply.text
+    
+    if text:
         await event.edit(text[::-1])
+    else:
+        await event.edit("❌ Tərsinə çevirmək üçün ya mətn yazın, ya da mesaja reply atın!")
 
 @client.on(events.NewMessage(pattern=r'\.del'))
 async def mesaj_sil(event):
@@ -48,7 +57,7 @@ async def user_info(event):
 @client.on(events.NewMessage(pattern=r'\.saat'))
 async def canli_saat(event):
     if event.out:
-        for _ in range(15): # 15 saniyəlik canlı saat
+        for _ in range(15):
             current_time = time.strftime("%H:%M:%S")
             await event.edit(f"🕒 **Saat:** `{current_time}`")
             await asyncio.sleep(1)
@@ -65,28 +74,51 @@ async def afk_aktiv(event):
 async def afk_cavab(event):
     global AFK_REJIM
     if AFK_REJIM and event.is_private:
-        await event.respond(f"🤖 **Mən hazırda AFK-yam (aktiv deyiləm).**\n\n📝 **Səbəb:** {AFK_SEBEB if AFK_SEBEB else 'Yoxdur.'}")
+        await event.respond(f"🤖 **Mən hazırda AFK-yam.**\n\n📝 **Səbəb:** {AFK_SEBEB if AFK_SEBEB else 'Yoxdur.'}")
 
 @client.on(events.NewMessage(pattern=r'\.online'))
 async def afk_deaktiv(event):
     global AFK_REJIM
     if event.out:
         AFK_REJIM = False
-        await event.edit("✅ **Mən qayıtdım! AFK rejimi söndürüldü.**")
+        await event.edit("✅ **AFK rejimi söndürüldü.**")
 
 @client.on(events.NewMessage(pattern=r'\.pluginyukle'))
 async def plugin_yukle(event):
-    if not event.out or not event.is_reply: return
+    if not event.out or not event.is_reply:
+        await event.edit("❌ Lütfən bir `.py` faylına reply atın gaga!")
+        return
+        
     reply_message = await event.get_reply_message()
     if reply_message.file and reply_message.file.name.endswith(".py"):
-        path = os.path.join("plugins", reply_message.file.name)
+        plugin_name = reply_message.file.name
+        path = os.path.join("plugins", plugin_name)
         await client.download_media(reply_message, path)
-        await event.edit(f"✅ `{reply_message.file.name}` yükləndi!")
-        # Plugin aktivləşdirmə kodu buraya gələ bilər
+        
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                tree = ast.parse(f.read())
+            
+            komandalar = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call) and getattr(node.func, 'attr', '') == 'on':
+                    for arg in node.args:
+                        if isinstance(arg, ast.Call) and getattr(arg.func, 'attr', '') == 'NewMessage':
+                            for kw in arg.keywords:
+                                if kw.arg == 'pattern' and isinstance(kw.value, ast.Constant):
+                                    komandalar.append(f"`{kw.value.value}`")
+            
+            p_info = "\n".join(komandalar) if komandalar else "İstifadə qaydası tapılmadı."
+            await event.edit(f"✅ **Plugin yükləndi gaga!**\n\n🛠 **İstifadə qaydası (Komandalar):**\n{p_info}")
+            
+        except Exception:
+            await event.edit(f"✅ **Plugin yükləndi gaga!**")
+    else:
+        await event.edit("❌ Bu düzgün bir plugin faylı deyil gaga!")
 
 async def main():
     await client.start()
-    print("🚀 Userbot tam funksiyalarla işə düşdü!")
+    print("🚀 Userbot Hazırdır!")
     await client.run_until_disconnected()
 
 if __name__ == '__main__':
