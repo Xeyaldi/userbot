@@ -1,12 +1,14 @@
 import os
 import asyncio
 import importlib
-import importlib.util  # Xətanın həlli məhz bu sətirdir!
+import importlib.util
 import time
 import ast
 import sys
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
+# Tərcümə üçün lazım olan kitabxana
+from deep_translator import GoogleTranslator
 
 # Heroku Ayarları
 API_ID = int(os.environ.get("API_ID"))
@@ -38,8 +40,42 @@ async def menyu(event):
             "• `.online` - AFK bağlayır\n"
             "• `.pluginyukle` - Plugin əlavə edir\n"
             "• `.burdasangaga` - Botu yoxlayır\n"
+            "• `.tercume [az/ru/ing/fr]` - Reply mesajı tərcümə edir\n"
         )
         await event.edit(menyu_metni)
+
+# --- TƏRCÜMƏ KOMANDASI ---
+@client.on(events.NewMessage(pattern=r'\.tercume (az|ru|ing|fr)'))
+async def tercume_et(event):
+    if not event.out: return
+    if not event.is_reply:
+        await event.edit("❌ Tərcümə etmək üçün bir mesajı reply edin gaga!")
+        return
+
+    dil_kodlari = {
+        "az": "az",
+        "ru": "ru",
+        "ing": "en",
+        "fr": "fr"
+    }
+    
+    secilen_dil = event.pattern_match.group(1)
+    hedef_dil = dil_kodlari.get(secilen_dil)
+    
+    reply_msg = await event.get_reply_message()
+    metn = reply_msg.text
+    
+    if not metn:
+        await event.edit("❌ Tərcümə ediləcək mətn tapılmadı.")
+        return
+
+    await event.edit("🔄 Tərcümə edilir...")
+    
+    try:
+        tercume = GoogleTranslator(source='auto', target=hedef_dil).translate(metn)
+        await event.edit(f"🌐 **Dil:** `{secilen_dil.upper()}`\n\n📝 **Tərcümə:**\n{tercume}")
+    except Exception as e:
+        await event.edit(f"❌ Xəta baş verdi: `{str(e)}`")
 
 # --- ƏSAS KOMANDALAR ---
 @client.on(events.NewMessage(pattern=r'\.burdasangaga'))
@@ -137,7 +173,6 @@ async def plugin_yukle(event):
 
 async def main():
     await client.start()
-    # Açılışda qovluqdakı pluginləri yüklə
     if os.path.exists(PLUGINS_DIR):
         for f in os.listdir(PLUGINS_DIR):
             if f.endswith(".py"):
