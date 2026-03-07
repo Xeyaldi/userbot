@@ -30,7 +30,7 @@ if not os.path.exists(PLUGINS_DIR):
 async def menyu(event):
     if event.out:
         menyu_metni = (
-            "🌟 **Xəyalın Userbot Menyusu** 🌟\n\n"
+            "🌟 **XəyalUserbot Menyusu** 🌟\n\n"
             "🛠 **Mövcud Komandalar:**\n"
             "• `.ters` - Yazını tərsinə çevirir\n"
             "• `.del` - Mesajı silir\n"
