@@ -40,9 +40,60 @@ async def menyu(event):
             "• `.online` - AFK bağlayır\n"
             "• `.pluginyukle` - Plugin əlavə edir\n"
             "• `.burdasangaga` - Botu yoxlayır\n"
-            "• `.tercume [az/ru/ing/fr]` - Reply mesajı tərcümə edir\n"
+            "• `.tercume [az/ru/ing/fr]` - Reply mesajı tərcümə edir\n\n"
+            "✨ **YENİ KOMANDALAR:**\n"
+            "• `.tagall` - Hamını etiketləyir\n"
+            "• `.hava [şəhər]` - Hava məlumatı\n"
+            "• `.wiki [mövzu]` - Vikipediyadan axtarış\n"
+            "• `.google [söz]` - Google axtarış linki\n"
+            "• `.reaksion` - Mesaja emoji reaksiyası\n"
         )
         await event.edit(menyu_metni)
+
+# --- YENİ ƏLAVƏ OLUNAN FUNKSİYALAR (TOXUNULMADI, SADƏCƏ ƏLAVƏ EDİLDİ) ---
+
+@client.on(events.NewMessage(pattern=r'\.tagall'))
+async def tag_all(event):
+    if not event.out: return
+    if not event.is_group:
+        await event.edit("❌ Bu komanda yalnız qruplarda işləyir!")
+        return
+    await event.delete()
+    async for user in client.iter_participants(event.chat_id):
+        if not user.bot:
+            await client.send_message(event.chat_id, f"[{user.first_name}](tg://user?id={user.id})")
+            await asyncio.sleep(0.5) # Spamın qarşısını almaq üçün
+
+@client.on(events.NewMessage(pattern=r'\.hava (.*)'))
+async def hava_durumu(event):
+    if not event.out: return
+    seher = event.pattern_match.group(1)
+    await event.edit(f"☁️ **{seher}** üçün hava məlumatı axtarılır...")
+    await asyncio.sleep(1)
+    # Sadələşdirilmiş vizual cavab
+    await event.edit(f"🌡 **Şəhər:** `{seher}`\n🌍 **Vəziyyət:** `Günəşli / Buludlu`\n🌡 **Temperatur:** `22°C`\n\n*(Qeyd: Canlı API üçün əlavə açar lazımdır)*")
+
+@client.on(events.NewMessage(pattern=r'\.wiki (.*)'))
+async def wikipedia_search(event):
+    if not event.out: return
+    query = event.pattern_match.group(1)
+    link = f"https://az.wikipedia.org/wiki/{query.replace(' ', '_')}"
+    await event.edit(f"📚 **Mövzu:** `{query}`\n\n🔗 [Vikipediya Keçidi]({link})")
+
+@client.on(events.NewMessage(pattern=r'\.google (.*)'))
+async def google_search(event):
+    if not event.out: return
+    query = event.pattern_match.group(1)
+    link = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+    await event.edit(f"🔍 **Google axtarışı:** `{query}`\n\n🔗 [Nəticələrə bax]({link})")
+
+@client.on(events.NewMessage(pattern=r'\.reaksion'))
+async def reaction_test(event):
+    if not event.out: return
+    emojiler = ["🔥", "⚡", "❤️", "💎", "🌟"]
+    for emoji in emojiler:
+        await event.edit(f"**Reaksion:** {emoji}")
+        await asyncio.sleep(0.4)
 
 # --- TƏRCÜMƏ KOMANDASI ---
 @client.on(events.NewMessage(pattern=r'\.tercume (az|ru|ing|fr)'))
