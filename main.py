@@ -5,6 +5,8 @@ import importlib.util
 import time
 import ast
 import sys
+import random
+import wikipedia
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 # Tərcümə üçün lazım olan kitabxana
@@ -20,6 +22,7 @@ client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 # Ayarlar
 AFK_REJIM = False
 AFK_SEBEB = ""
+TAG_REJIM = True
 PLUGINS_DIR = "plugins"
 
 if not os.path.exists(PLUGINS_DIR):
@@ -42,27 +45,47 @@ async def menyu(event):
             "• `.burdasangaga` - Botu yoxlayır\n"
             "• `.tercume [az/ru/ing/fr]` - Reply mesajı tərcümə edir\n\n"
             "✨ **YENİ KOMANDALAR:**\n"
-            "• `.tagall` - Hamını etiketləyir\n"
+            "• `.tagall [səbəb]` - Hamını etiketləyir\n"
+            "• `.stoptag` - Tagı dayandırır\n"
             "• `.hava [şəhər]` - Hava məlumatı\n"
             "• `.wiki [mövzu]` - Vikipediyadan axtarış\n"
             "• `.google [söz]` - Google axtarış linki\n"
             "• `.reaksion` - Mesaja emoji reaksiyası\n"
+            "• `.shans` - Şansını yoxla\n"
+            "• `.bom` - Partlayış effekti\n"
         )
         await event.edit(menyu_metni)
 
-# --- YENİ ƏLAVƏ OLUNAN FUNKSİYALAR (TOXUNULMADI, SADƏCƏ ƏLAVƏ EDİLDİ) ---
+# --- YENİ ƏLAVƏ OLUNAN FUNKSİYALAR ---
 
-@client.on(events.NewMessage(pattern=r'\.tagall'))
+@client.on(events.NewMessage(pattern=r'\.tagall ?(.*)'))
 async def tag_all(event):
+    global TAG_REJIM
     if not event.out: return
     if not event.is_group:
         await event.edit("❌ Bu komanda yalnız qruplarda işləyir!")
         return
+    
+    sebeb = event.pattern_match.group(1)
+    TAG_REJIM = True
     await event.delete()
+    
     async for user in client.iter_participants(event.chat_id):
+        if not TAG_REJIM:
+            await client.send_message(event.chat_id, "🛑 **Tag dayandırıldı!**")
+            break
         if not user.bot:
-            await client.send_message(event.chat_id, f"[{user.first_name}](tg://user?id={user.id})")
-            await asyncio.sleep(0.5) # Spamın qarşısını almaq üçün
+            msg = f"[{user.first_name}](tg://user?id={user.id})"
+            if sebeb: msg += f" - {sebeb}"
+            await client.send_message(event.chat_id, msg)
+            await asyncio.sleep(1.5)
+
+@client.on(events.NewMessage(pattern=r'\.stoptag'))
+async def stop_tag(event):
+    global TAG_REJIM
+    if event.out:
+        TAG_REJIM = False
+        await event.edit("✅ Tag dayandırılır...")
 
 @client.on(events.NewMessage(pattern=r'\.hava (.*)'))
 async def hava_durumu(event):
@@ -70,15 +93,19 @@ async def hava_durumu(event):
     seher = event.pattern_match.group(1)
     await event.edit(f"☁️ **{seher}** üçün hava məlumatı axtarılır...")
     await asyncio.sleep(1)
-    # Sadələşdirilmiş vizual cavab
     await event.edit(f"🌡 **Şəhər:** `{seher}`\n🌍 **Vəziyyət:** `Günəşli / Buludlu`\n🌡 **Temperatur:** `22°C`\n\n*(Qeyd: Canlı API üçün əlavə açar lazımdır)*")
 
 @client.on(events.NewMessage(pattern=r'\.wiki (.*)'))
 async def wikipedia_search(event):
     if not event.out: return
     query = event.pattern_match.group(1)
-    link = f"https://az.wikipedia.org/wiki/{query.replace(' ', '_')}"
-    await event.edit(f"📚 **Mövzu:** `{query}`\n\n🔗 [Vikipediya Keçidi]({link})")
+    await event.edit(f"🔍 **{query}** haqqında məlumat axtarılır...")
+    try:
+        wikipedia.set_lang("az")
+        summary = wikipedia.summary(query, sentences=3)
+        await event.edit(f"📚 **Mövzu:** `{query}`\n\n📝 **Məlumat:** {summary}")
+    except:
+        await event.edit(f"❌ `{query}` haqqında məlumat tapılmadı gaga.")
 
 @client.on(events.NewMessage(pattern=r'\.google (.*)'))
 async def google_search(event):
@@ -94,6 +121,19 @@ async def reaction_test(event):
     for emoji in emojiler:
         await event.edit(f"**Reaksion:** {emoji}")
         await asyncio.sleep(0.4)
+
+@client.on(events.NewMessage(pattern=r'\.shans'))
+async def shans_yoxla(event):
+    if event.out:
+        faiz = random.randint(0, 100)
+        await event.edit(f"🎲 Sənin bu günkü şansın: **%{faiz}**")
+
+@client.on(events.NewMessage(pattern=r'\.bom'))
+async def bom_effect(event):
+    if event.out:
+        await event.edit("💣")
+        await asyncio.sleep(0.8)
+        await event.edit("💥 PARTLADI!")
 
 # --- TƏRCÜMƏ KOMANDASI ---
 @client.on(events.NewMessage(pattern=r'\.tercume (az|ru|ing|fr)'))
