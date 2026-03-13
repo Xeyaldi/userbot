@@ -287,7 +287,7 @@ async def afk_deaktiv(event):
 import requests
 import yt_dlp
 from pytgcalls import PyTgCalls
-from pytgcalls.types import AudioPiped
+from pytgcalls.types import MediaStream 
 
 # Heroku üçün ayarlar
 COOKIES_RAW = os.environ.get("COOKIES_DATA", None)
