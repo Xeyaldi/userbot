@@ -4,4 +4,3 @@ beautifulsoup4
 deep-translator
 wikipedia
 yt-dlp
-pytgcalls==2.0.0.dev24
