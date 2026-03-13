@@ -3,5 +3,6 @@ requests
 beautifulsoup4
 deep-translator
 wikipedia
-pytgcalls==2.1.0
 yt-dlp
+pytgcalls==2.0.0
+tgcalls==2.0.0
