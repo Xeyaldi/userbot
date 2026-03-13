@@ -283,16 +283,14 @@ async def afk_deaktiv(event):
         AFK_REJIM = False
         await event.edit("✅ AFK söndürüldü.")
 
-# --- YENİ FUNKSİYALAR: VC + AVTO-DOWNLOAD + COOKIE ---
+# --- YENİ FUNKSİYA: AVTO-DOWNLOAD + COOKIE (SƏS SİSTEMİ SİLİNDİ) ---
 import requests
 import yt_dlp
-from pytgcalls import PyTgCalls
-from pytgcalls.types import MediaStream 
+import os
 
 # Heroku üçün ayarlar
 COOKIES_RAW = os.environ.get("COOKIES_DATA", None)
 COOKIE_PATH = "cookies.txt"
-call_py = PyTgCalls(client)
 
 def prepare_cookies():
     if COOKIES_RAW:
@@ -303,48 +301,10 @@ def prepare_cookies():
         except Exception as e:
             print(f"❌ Cookie xətası: {e}")
 
+# Cookieləri bəri başdan hazırlayırıq
 prepare_cookies()
 
-# 1. Səsli Söhbətdə Musiqi Oxutmaq (.play)
-@client.on(events.NewMessage(pattern=r'\.play ?(.*)'))
-async def play_vc(event):
-    if not event.out: return
-    input_str = event.pattern_match.group(1)
-    
-    if event.is_reply and not input_str:
-        reply = await event.get_reply_message()
-        if reply.audio or reply.voice:
-            await event.edit("📥 Fayl yüklənir...")
-            path = await reply.download_media()
-            try:
-                await call_py.play(event.chat_id, AudioPiped(path))
-                await event.edit("🎶 Fayl səsləndirilir!")
-            except Exception as e:
-                await event.edit(f"❌ Xəta: {e}")
-        return
-
-    if input_str:
-        await event.edit("🔍 YouTube linki yoxlanılır...")
-        ydl_opts = {'format': 'bestaudio/best', 'cookiefile': COOKIE_PATH if os.path.exists(COOKIE_PATH) else None, 'quiet': True}
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(input_str, download=False)
-                await call_py.play(event.chat_id, AudioPiped(info['url']))
-                await event.edit(f"🎶 **Oxunur:** `{info.get('title')}`")
-        except Exception as e:
-            await event.edit(f"❌ Xəta: {e}")
-
-# 2. Səsli Söhbəti Dayandırmaq (.stopvc)
-@client.on(events.NewMessage(pattern=r'\.stopvc'))
-async def stop_vc(event):
-    if not event.out: return
-    try:
-        await call_py.leave_call(event.chat_id)
-        await event.edit("🛑 Səsli söhbət dayandırıldı.")
-    except:
-        await event.edit("❌ Aktiv zəng yoxdur.")
-
-# 3. Avtomatik Video Yükləyici (XeyalUserbot 🗿)
+# Avtomatik Video Yükləyici (XeyalUserbot 🗿)
 @client.on(events.NewMessage(incoming=True))
 async def auto_downloader(event):
     text = event.text
@@ -353,25 +313,32 @@ async def auto_downloader(event):
         
     status_msg = await event.reply("📥 Link aşkarlandı, emal olunur...")
     
-    if not os.path.exists("downloads"): os.makedirs("downloads")
+    if not os.path.exists("downloads"): 
+        os.makedirs("downloads")
+        
     file_path = f'downloads/{event.id}.mp4'
     
     ydl_opts = {
         'format': 'best',
         'outtmpl': file_path,
         'cookiefile': COOKIE_PATH if os.path.exists(COOKIE_PATH) else None,
-        'quiet': True, 'noplaylist': True
+        'quiet': True, 
+        'noplaylist': True
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([text])
+        
+        # Sənin istədiyin imza ilə göndərir
         await event.reply("XeyalUserbot 🗿", file=file_path)
         await status_msg.delete()
-        if os.path.exists(file_path): os.remove(file_path)
+        
+        if os.path.exists(file_path): 
+            os.remove(file_path)
     except Exception as e:
         await status_msg.edit(f"❌ Xəta: `{str(e)}`")
-# --- YENİ FUNKSİYALARIN SONU ---
+# --- FUNKSİYANIN SONU ---
 
 # --- PLUGİN YÜKLƏMƏ (SƏNİN ORİJİNAL KODUN) ---
 @client.on(events.NewMessage(pattern=r'\.pluginyukle'))
