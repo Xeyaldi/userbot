@@ -4,5 +4,5 @@ beautifulsoup4
 deep-translator
 wikipedia
 yt-dlp
-pytgcalls==2.0.0
-tgcalls==2.0.0
+https://github.com/pytgcalls/tgcalls/archive/master.zip
+pytgcalls
