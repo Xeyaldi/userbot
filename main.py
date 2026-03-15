@@ -394,9 +394,9 @@ async def mesaj_sil(event):
         await (await event.get_reply_message()).delete()
         await event.delete()
 
-
 # --- AVTOMATİK LOG QRUPU QURAN FUNKSİYA ---
 async def setup_log_group():
+    # Bazada yoxlayırıq
     log_cfg = await config_db.find_one({"type": "log_group"})
     if log_cfg:
         return log_cfg["chat_id"]
@@ -433,22 +433,24 @@ async def setup_log_group():
 
 # --- ƏSAS İŞƏSALMA ---
 async def main():
-    # 1. Client-ləri başladırıq
+    # Client-ləri başladırıq
     await client.start()
     await tgbot.start(bot_token=BOT_TOKEN)
     
-    # 2. Log sistemini yoxla/qur
+    # Log sistemini yoxla/qur
     await setup_log_group()
     
-    # 3. Pluginləri yüklə
+    # Pluginləri yüklə
     async for plugin in plugins_db.find():
         p_path = os.path.join("plugins", plugin['name'])
-        with open(p_path, "wb") as f: f.write(plugin['content'])
+        with open(p_path, "wb") as f: 
+            f.write(plugin['content'])
         try:
             spec = importlib.util.spec_from_file_location(plugin['name'][:-3], p_path)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-        except: continue
+        except: 
+            continue
             
     print("✅ HT USERBOT və Köməkçi Bot Hazırdır!")
     # Canlı tuturuq
