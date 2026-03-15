@@ -16,6 +16,8 @@ from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
 from deep_translator import GoogleTranslator
 
+from telethon import functions, types
+
 # Heroku Ayarları
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
@@ -27,27 +29,11 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
+config_db = db["config"] 
 
-# 1. (Userbot)
+# Client-lər
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
-
-# 2. Butonlar üçün rəsmi Bot (tgbot)
-# .start() burada birbaşa çağırılır ki, paralel işləsinlər
-tgbot = TelegramClient("bot_session", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
-
-async def start_everything():
-    # Userbotu başladırıq
-    await client.connect()
-    if not await client.is_user_authorized():
-        await client.start()
-    
-    # Köməkçi botu başladırıq
-    await tgbot.start()
-    print("✅ HƏR İKİSİ AKTİVDİR: Userbot və Köməkçi Bot!")
-
-# Hər iki client-i eyni loop-da başladırıq
-client.loop.run_until_complete(start_everything())
-
+tgbot = TelegramClient("bot_session", API_ID, API_HASH)
 
 # --- BUNDAN SONRA SƏNİN DİGƏR KOMANDALARIN GƏLİR ---
 # BUNDAN AŞAĞIYA ÖZ KOMANDALARINI VƏ PLUGİNLƏRİNİ YAPIŞDIRA BİLƏRSƏN
