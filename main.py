@@ -399,43 +399,70 @@ async def mesaj_sil(event):
         await event.delete()
 
 
+# --- AVTOMATİK LOG QRUPU QURAN FUNKSİYA ---
+async def setup_log_group():
+    log_cfg = await config_db.find_one({"type": "log_group"})
+    if log_cfg:
+        return log_cfg["chat_id"]
+
+    try:
+        # Yeni Log Qrupu Yaradırıq
+        result = await client(functions.channels.CreateChannelRequest(
+            title='HT Userbot Log Grubu',
+            about='Userbot loqları və butonlar üçün avtomatik yaradılıb.',
+            megagroup=True
+        ))
+        log_chat_id = int(f"-100{result.chats[0].id}")
+
+        # Botu qrupa dəvət edib admin edirik
+        bot_user = await tgbot.get_me()
+        await client(functions.channels.InviteToChannelRequest(log_chat_id, [bot_user.id]))
+        await client(functions.channels.EditAdminRequest(
+            channel=log_chat_id,
+            user_id=bot_user.id,
+            admin_rights=types.ChatAdminRights(
+                post_messages=True, delete_messages=True, 
+                invite_users=True, pin_messages=True
+            ),
+            rank='Köməkçi Bot'
+        ))
+
+        # ID-ni bazaya yazırıq
+        await config_db.insert_one({"type": "log_group", "chat_id": log_chat_id})
+        await client.send_message(log_chat_id, "✅ **Log Qrupu Yaradıldı!**\nButonlar artıq aktivdir.")
+        return log_chat_id
+    except Exception as e:
+        print(f"Log xətası: {e}")
+        return None
+
+# --- ƏSAS İŞƏSALMA ---
 async def main():
-    # 1. Userbotu (öz hesabını) başladırıq
-    await client.connect()
-    if not await client.is_user_authorized():
-        await client.start()
-    
-    # 2. Butonlar üçün rəsmi Botu (tgbot) başladırıq
-    # Bu sətir logdakı "did not login" xətasını həll edir
+    # 1. Client-ləri başladırıq
+    await client.start()
     await tgbot.start(bot_token=BOT_TOKEN)
     
-    # Pluginləri MongoDB-dən yükləyirik
-async for plugin in plugins_db.find():
+    # 2. Log sistemini yoxla/qur
+    await setup_log_group()
+    
+    # 3. Pluginləri yüklə
+    async for plugin in plugins_db.find():
         p_path = os.path.join("plugins", plugin['name'])
-        with open(p_path, "wb") as f: 
-            f.write(plugin['content'])
+        with open(p_path, "wb") as f: f.write(plugin['content'])
         try:
             spec = importlib.util.spec_from_file_location(plugin['name'][:-3], p_path)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-        except: 
-            continue
+        except: continue
             
-    print("✅ HT USERBOT və Köməkçi Bot (Butonlar) hazırdır!")
-    
-    # Hər iki client-in sönməməsi üçün gözləyirik
-    await asyncio.gather(
-        client.run_until_disconnected(),
-        tgbot.run_until_disconnected()
-    )
+    print("✅ HT USERBOT və Köməkçi Bot Hazırdır!")
+    # Canlı tuturuq
+    await asyncio.gather(client.run_until_disconnected(), tgbot.run_until_disconnected())
 
-# Xətanın həlli və Loop idarəsi
 if __name__ == '__main__':
     try:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main())
     except RuntimeError:
-        # Əgər loop artıq bağlanıbsa, yeni loop yaradırıq
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(main())
