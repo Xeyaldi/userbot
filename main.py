@@ -76,8 +76,8 @@ async def help_menu(event):
         me_bot = await tgbot.get_me()
         # Userbot arxa fonda botun inline funksiyasını çağırır
         results = await client.inline_query(me_bot.username, "menu")
-        # "Via bot" yazısı olmadan öz adından göndərir
-        await results[0].send_message(event.chat_id, reply_to=event.reply_to_msg_id)
+        # XƏTA BURADA İDİ: results[0].click istifadə edərək mesajı sənin adından "via-sız" atırıq
+        await results[0].click(event.chat_id, reply_to=event.reply_to_msg_id, hide_via=True)
         await event.delete()
     except Exception as e:
         await event.edit(f"❌ Menyu xətası: {e}\n@BotFather-də 'Inline Mode'u açın.")
