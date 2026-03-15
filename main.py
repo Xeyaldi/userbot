@@ -7,9 +7,10 @@ import ast
 import sys
 import random
 import wikipedia
+import motor.motor_asyncio  # <--- BURA ƏLAVƏ EDİLDİ (MongoDB üçün)
+from gtts import gTTS       # <--- BURA ƏLAVƏ EDİLDİ (Səs üçün)
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
-# Tərcümə üçün lazım olan kitabxana
 from deep_translator import GoogleTranslator
 
 # Heroku Ayarları
