@@ -28,15 +28,27 @@ mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
 
+# ... (Yuxarıda API_ID, SESSION, MONGO_URL və s. var)
+
 # Client-i təyin edirik
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
-# ASINXRON BAŞLATMA (Xətaları həll edən əsas hissə)
+# BUTONLARIN İŞLƏMƏSİ ÜÇÜN ƏSAS HİSSƏ BURADIR:
 async def start_bot():
-    await client.start(bot_token=BOT_TOKEN)
+    await client.connect()
+    if not await client.is_user_authorized():
+        await client.start()
+    try:
+        # Bot tokeni burada işə salırıq ki, butonlar aktiv olsun
+        await client.start(bot_token=BOT_TOKEN)
+        print("✅ Userbot və Bot Token uğurla bağlandı!")
+    except Exception as e:
+        print(f"❌ Bot Token qoşulmadı: {e}")
 
+# Kodu işə salırıq
 client.loop.run_until_complete(start_bot())
 
+# --- BUNDAN SONRA SƏNİN DİGƏR KOMANDALARIN GƏLİR ---
 # BUNDAN AŞAĞIYA ÖZ KOMANDALARINI VƏ PLUGİNLƏRİNİ YAPIŞDIRA BİLƏRSƏN
 # Qlobal dəyişənlər
 AFK_REJIM = False
