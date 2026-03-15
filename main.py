@@ -16,18 +16,12 @@ from deep_translator import GoogleTranslator
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION = os.environ.get("SESSION_STRING")
+MONGO_URL = os.environ.get("MONGO_URL") # Bunu Heroku Config Vars-a əlavə etməyi unutma!
 
-client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
-
-# Ayarlar
-AFK_REJIM = False
-AFK_SEBEB = ""
-TAG_REJIM = True
-PLUGINS_DIR = "plugins"
-FILTERS = {} # Filterləri yadda saxlamaq üçün
-
-if not os.path.exists(PLUGINS_DIR):
-    os.makedirs(PLUGINS_DIR)
+# MongoDB Bağlantısını Başlat
+mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
+db = mongo_client["xeyal_userbot"]
+plugins_db = db["plugins"]
 
 # --- MENYU KOMANDASI ---
 @client.on(events.NewMessage(pattern=r'\.xeyalinmenusu'))
