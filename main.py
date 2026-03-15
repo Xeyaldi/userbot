@@ -1,397 +1,308 @@
 import os
 import asyncio
-import importlib
-import importlib.util
 import time
-import ast
-import sys
 import random
 import wikipedia
 import requests
 import yt_dlp
 import motor.motor_asyncio
-from gtts import gTTS
-from bs4 import BeautifulSoup
-from telethon import TelegramClient, events, Button, functions, types
-from telethon.sessions import StringSession
+from pyrogram import Client, filters, enums
+from pyrogram.types import (
+    InlineKeyboardMarkup, 
+    InlineKeyboardButton, 
+    InlineQueryResultArticle, 
+    InputTextMessageContent
+)
+from pyrogram.errors import FloodWait
 from deep_translator import GoogleTranslator
+from gtts import gTTS
 
 # Heroku Ayarları
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION = os.environ.get("SESSION_STRING")
-MONGO_URL = os.environ.get("MONGO_URL") 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
+MONGO_URL = os.environ.get("MONGO_URL")
 
 # MongoDB Bağlantısı
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
-config_db = db["config"] 
 
 # Client-lər
-client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
-tgbot = TelegramClient("bot_session", API_ID, API_HASH)
+app = Client("my_account", api_id=API_ID, api_hash=API_HASH, session_string=SESSION)
+bot = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 # Qlobal dəyişənlər
 AFK_REJIM = False
 AFK_SEBEB = ""
 TAG_REJIM = True
-PLUGINS_DIR = "plugins"
 FILTERS = {}
-BOT_USERNAME = "" 
-
-if not os.path.exists(PLUGINS_DIR):
-    os.makedirs(PLUGINS_DIR)
 
 # --- KOMANDA İZAHLARI ---
 COMMAND_DETAILS = {
-    "ping": "🚀 **Ping:** Botun cavab sürətini ölçür.",
-    "id": "🆔 **ID:** İstifadəçinin və ya reply atılan şəxsin ID-sini göstərir.",
-    "etiraf": "💭 **Etiraf:** Bot təsadüfi bir etiraf mesajı göndərir.",
-    "tagall": "📣 **TagAll:** Qrupdakı hamını etiketləyir.",
-    "wiki": "📚 **Wiki:** Wikipedia-da axtarış edir.",
-    "hava": "🌡 **Hava:** Şəhər üzrə hava proqnozu.",
-    "shans": "🎲 **Şans:** Şans faizinizi göstərir.",
-    "bom": "💣 **BOM:** Partlayış effekti yaradır.",
-    "dice": "🎲 **Dice:** Təsadüfi oyun ikonları göndərir.",
-    "yazi": "✨ **Yazı:** Yazını fərqli şriftə salır.",
-    "tercume": "🌐 **Tərcümə:** Mesajı başqa dilə çevirir.",
+    "ping": "🚀 **Ping:** Botun sürətini ölçür.",
+    "id": "🆔 **ID:** İstifadəçi ID-sini göstərir.",
+    "etiraf": "💭 **Etiraf:** Təsadüfi etiraf mesajı göndərir.",
+    "tagall": "📣 **TagAll:** Hamını etiketləyir.",
+    "wiki": "📚 **Wiki:** Wikipedia axtarışı.",
+    "hava": "🌡 **Hava:** Hava proqnozu.",
+    "shans": "🎲 **Şans:** Şans faizi.",
+    "bom": "💣 **BOM:** Partlayış effekti.",
+    "dice": "🎲 **Dice:** Təsadüfi oyun ikonları.",
+    "yazi": "✨ **Yazı:** Şrifti dəyişir.",
+    "tercume": "🌐 **Tərcümə:** Mesajı tərcümə edir.",
     "ses": "🎙 **Səs:** Yazını səsə çevirir.",
-    "afk": "💤 **AFK:** Avtomatik cavab rejimini açır.",
-    "online": "✅ **Online:** AFK rejimini söndürür.",
-    "saat": "🕒 **Saat:** Canlı saatı göstərir.",
+    "afk": "💤 **AFK:** AFK rejimini açır.",
+    "online": "✅ **Online:** AFK-nı söndürür.",
+    "saat": "🕒 **Saat:** Canlı saat.",
     "ters": "🔄 **Tərs:** Yazını tərsinə çevirir.",
-    "del": "🗑 **Sil:** Mesajı dərhal silir.",
-    "pluginyukle": "🔌 **Plugin:** Yeni plugin əlavə edir.",
-    "ban": "🚫 **Ban:** İstifadəçini birdəfəlik ban edir.",
+    "del": "🗑 **Sil:** Mesajı silir.",
+    "ban": "🚫 **Ban:** İstifadəçini ban edir.",
     "kick": "👞 **Kick:** İstifadəçini qrupdan atır."
 }
 
-# --- MENYU DÜZƏLİŞİ (VİA YAZISI OLMADAN VƏ XƏTASIZ) ---
-@client.on(events.NewMessage(pattern=r'\.hthelp'))
-async def help_menu(event):
-    if not event.out: return
+# --- YARDIM MENYUSU (.hthelp) ---
+@app.on_message(filters.command("hthelp", prefixes=".") & filters.me)
+async def help_menu(client, message):
     try:
-        me_bot = await tgbot.get_me()
-        results = await client.inline_query(me_bot.username, "menu")
-        
-        # QƏTİ HƏLL: results[0].id istifadə edərək 'InlineResults' xətasını aradan qaldırdım
-        await client(functions.messages.SendInlineBotResultRequest(
-            peer=event.chat_id,
-            query_id=results.query_id,
-            id=results[0].id,
-            reply_to_msg_id=event.reply_to_msg_id,
+        results = await client.get_inline_bot_results(bot.me.username, "menu")
+        await client.send_inline_bot_result(
+            message.chat.id, 
+            results.query_id, 
+            results.results[0].id,
             hide_via=True
-        ))
-        await event.delete()
+        )
+        await message.delete()
     except Exception as e:
-        await event.edit(f"❌ Xəta: {e}")
+        await message.edit(f"❌ Xəta: {e}")
 
-@tgbot.on(events.InlineQuery())
-async def inline_handler(event):
-    me = await client.get_me()
-    if event.sender_id != me.id: return
-    
-    query = event.query.query
-    builder = event.builder
-    
-    if query == "menu":
+@bot.on_inline_query()
+async def inline_handler(client, query):
+    if query.query == "menu":
         buttons = [
-            [Button.inline("🛠 Komandalar", data="view_cmds"), Button.inline("🔌 Pluginlər", data="view_plugs")],
-            [Button.url("📢 HT Kanal", url="https://t.me/Kullaniciadidi"), Button.inline("❌ Bağla", data="close_m")]
+            [InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")],
+            [InlineKeyboardButton("📢 HT Kanal", url="https://t.me/Kullaniciadidi"), InlineKeyboardButton("❌ Bağla", callback_data="close_m")]
         ]
-        res = builder.article(title="HT Menu", text="✨ **HT USERBOT | İdarə Paneli**\n\nSistem aktivdir. Aşağıdakı bölmələri seçin:", buttons=buttons)
-        await event.answer([res])
+        await query.answer([
+            InlineQueryResultArticle(
+                title="HT Menu",
+                input_message_content=InputTextMessageContent("✨ **HT USERBOT | İdarə Paneli**\n\nSistem aktivdir."),
+                reply_markup=InlineKeyboardMarkup(buttons)
+            )
+        ], cache_time=1)
 
-@tgbot.on(events.CallbackQuery())
-async def callback_handler(event):
-    me = await client.get_me()
-    if event.sender_id != me.id: return
-    data = event.data.decode("utf-8")
-
+@bot.on_callback_query()
+async def callback_handler(client, callback_query):
+    data = callback_query.data
     if data == "view_cmds":
         cmd_buttons = []
         keys = list(COMMAND_DETAILS.keys())
         for i in range(0, len(keys), 2):
-            row = [Button.inline(f"🔹 {keys[i]}", data=f"info_{keys[i]}")]
-            if i + 1 < len(keys): row.append(Button.inline(f"🔹 {keys[i+1]}", data=f"info_{keys[i+1]}"))
+            row = [InlineKeyboardButton(f"🔹 {keys[i]}", callback_data=f"info_{keys[i]}")]
+            if i + 1 < len(keys): row.append(InlineKeyboardButton(f"🔹 {keys[i+1]}", callback_data=f"info_{keys[i+1]}"))
             cmd_buttons.append(row)
-        cmd_buttons.append([Button.inline("⬅️ Geri", data="back_to_main")])
-        await event.edit("🛠 **Sistem Komandaları:**", buttons=cmd_buttons)
-
-    elif data == "view_plugs":
-        plugin_buttons = []
-        if os.path.exists("plugins"):
-            files = [f[:-3] for f in os.listdir("plugins") if f.endswith(".py") and f != "__init__.py"]
-            for i in range(0, len(files), 2):
-                row = [Button.inline(f"📦 {files[i]}", data=f"pinfo_{files[i]}")]
-                if i + 1 < len(files): row.append(Button.inline(f"📦 {files[i+1]}", data=f"pinfo_{files[i+1]}"))
-                plugin_buttons.append(row)
-        if not plugin_buttons: return await event.answer("📭 Plugin yoxdur!", alert=True)
-        plugin_buttons.append([Button.inline("⬅️ Geri", data="back_to_main")])
-        await event.edit("🔌 **Yüklənmiş Pluginlər:**", buttons=plugin_buttons)
-
+        cmd_buttons.append([InlineKeyboardButton("⬅️ Geri", callback_data="back")])
+        await callback_query.edit_message_text("🛠 **Sistem Komandaları:**", reply_markup=InlineKeyboardMarkup(cmd_buttons))
     elif data.startswith("info_"):
         cmd = data.split("_")[1]
         desc = COMMAND_DETAILS.get(cmd, "Məlumat yoxdur.")
-        await event.edit(f"🔍 **Komanda:** `.{cmd}`\n\n{desc}", buttons=[[Button.inline("⬅️ Geri", data="view_cmds")]])
+        await callback_query.edit_message_text(f"🔍 **Komanda:** `.{cmd}`\n\n{desc}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Geri", callback_data="view_cmds")]]))
+    elif data == "back":
+        await callback_query.edit_message_text("✨ **HT USERBOT | İdarə Paneli**", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")]]))
+    elif data == "close_m":
+        await callback_query.message.delete()
 
-    elif data == "back_to_main":
-        await event.edit("✨ **HT USERBOT | İdarə Paneli**", buttons=[
-            [Button.inline("🛠 Komandalar", data="view_cmds"), Button.inline("🔌 Pluginlər", data="view_plugs")],
-            [Button.inline("❌ Bağla", data="close_m")]
-        ])
-    elif data == "close_m": await event.delete()
+# --- .htlive ---
+@app.on_message(filters.command("htlive", prefixes=".") & filters.me)
+async def htlive(client, message):
+    res = client.me
+    font_text = f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ [{res.first_name}](tg://user?id={res.id}) ϋçϋи αктινdιя"
+    await message.edit(f"🚀 {font_text}")
 
-# --- BURADAN AŞAĞI SƏNİN BÜTÜN FUNKSİYALARINDIR (HƏR BİRİ TAMDIR) ---
+# --- FİLTER SİSTEMİ ---
+@app.on_message(filters.command("filter", prefixes=".") & filters.me)
+async def filter_add(client, message):
+    if not message.reply_to_message:
+        return await message.edit("❌ Filter üçün bir mesaja reply at gaga!")
+    keyword = message.text.split(None, 1)[1].lower()
+    FILTERS[message.chat.id] = FILTERS.get(message.chat.id, {})
+    FILTERS[message.chat.id][keyword] = message.reply_to_message.id
+    await message.edit(f"✅ `{keyword}` filteri aktiv edildi!")
 
-@client.on(events.NewMessage(pattern=r'\.htlive'))
-async def htlive(event):
-    if event.out:
-        res = await client.get_me()
-        font_text = f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ [{res.first_name}](tg://user?id={res.id}) ϋçϋи αктινdιя"
-        await event.edit(f"🚀 {font_text}")
+@app.on_message(filters.command("stopfilter", prefixes=".") & filters.me)
+async def filter_stop(client, message):
+    keyword = message.text.split(None, 1)[1].lower()
+    if message.chat.id in FILTERS and keyword in FILTERS[message.chat.id]:
+        del FILTERS[message.chat.id][keyword]
+        await message.edit(f"🗑 `{keyword}` filteri silindi.")
+    else: await message.edit("❌ Tapılmadı.")
 
-@client.on(events.NewMessage(pattern=r'\.filter (.*)'))
-async def filter_add(event):
-    if not event.out: return
-    if not event.is_reply:
-        await event.edit("❌ Filter üçün bir mesaja reply at gaga!")
-        return
-    keyword = event.pattern_match.group(1).lower()
-    reply_msg = await event.get_reply_message()
-    chat_id = event.chat_id
-    if chat_id not in FILTERS: FILTERS[chat_id] = {}
-    FILTERS[chat_id][keyword] = reply_msg
-    await event.edit(f"✅ `{keyword}` filteri aktiv edildi!")
+@app.on_message(filters.incoming & filters.text & ~filters.private)
+async def filter_handler(client, message):
+    if message.chat.id in FILTERS:
+        word = message.text.lower()
+        if word in FILTERS[message.chat.id]:
+            await message.reply_reply_to_message(FILTERS[message.chat.id][word])
 
-@client.on(events.NewMessage(pattern=r'\.stopfilter (.*)'))
-async def filter_stop(event):
-    if not event.out: return
-    keyword = event.pattern_match.group(1).lower()
-    chat_id = event.chat_id
-    if chat_id in FILTERS and keyword in FILTERS[chat_id]:
-        del FILTERS[chat_id][keyword]
-        await event.edit(f"🗑 `{keyword}` filteri silindi.")
-    else: await event.edit("❌ Belə bir filter tapılmadı.")
+# --- PİNG VƏ ID ---
+@app.on_message(filters.command("ping", prefixes=".") & filters.me)
+async def ping(client, message):
+    start = time.time()
+    await message.edit("🚀...")
+    ms = round((time.time() - start) * 1000)
+    await message.edit(f"⚡ **ᎻᎢ ᏌᏚᎬᎡᏴOᎢ Sürəti:** `{ms}ms`")
 
-@client.on(events.NewMessage(incoming=True))
-async def filter_handler(event):
-    chat_id = event.chat_id
-    if chat_id in FILTERS:
-        msg_text = event.text.lower()
-        if msg_text in FILTERS[chat_id]:
-            await event.reply(FILTERS[chat_id][msg_text])
+@app.on_message(filters.command("id", prefixes=".") & filters.me)
+async def get_id(client, message):
+    if message.reply_to_message:
+        user = message.reply_to_message.from_user
+        await message.edit(f"🆔 **ID:** `{user.id}`\n👤 **Ad:** {user.first_name}")
+    else: await message.edit(f"🆔 **Sənin ID-in:** `{message.from_user.id}`")
 
-@client.on(events.NewMessage(pattern=r'\.ping'))
-async def ping_test(event):
-    if event.out:
-        start = time.time()
-        await event.edit("🚀...")
-        ms = round((time.time() - start) * 1000)
-        await event.edit(f"⚡ **ᎻᎢ ᏌᏚᎬᎡᏴOᎢ Sürəti:** `{ms}ms`")
+# --- ETİRAF ---
+@app.on_message(filters.command("etiraf", prefixes=".") & filters.me)
+async def etiraf(client, message):
+    etiraflar = ["Dünən gizlicə soyuducunu boşaltmışam... 🤫", "Mən əslində bir bot deyiləm 🛸"]
+    await message.edit(f"💭 **Etirafım:** {random.choice(etiraflar)}")
 
-@client.on(events.NewMessage(pattern=r'\.id'))
-async def get_user_id(event):
-    if event.out:
-        if event.is_reply:
-            reply = await event.get_reply_message()
-            user = await client.get_entity(reply.sender_id)
-            await event.edit(f"🆔 **ID:** `{user.id}`\n👤 **Ad:** {user.first_name}")
-        else: await event.edit(f"🆔 **Sənin ID-in:** `{event.sender_id}`")
-
-@client.on(events.NewMessage(pattern=r'\.etiraf'))
-async def etiraf_et(event):
-    if event.out:
-        etiraflar = ["Dünən gizlicə soyuducunu boşaltmışam... 🤫", "Mən əslində bir bot deyiləm 🛸"]
-        await event.edit(f"💭 **Etirafım:** {random.choice(etiraflar)}")
-
-@client.on(events.NewMessage(pattern=r'\.tagall ?(.*)'))
-async def tag_all(event):
+# --- TAGALL ---
+@app.on_message(filters.command("tagall", prefixes=".") & filters.me)
+async def tagall(client, message):
     global TAG_REJIM
-    if not event.out or not event.is_group: return
-    sebeb = event.pattern_match.group(1)
     TAG_REJIM = True
-    await event.delete()
-    async for user in client.iter_participants(event.chat_id):
+    sebeb = message.text.split(None, 1)[1] if len(message.command) > 1 else ""
+    await message.delete()
+    async for member in client.get_chat_members(message.chat.id):
         if not TAG_REJIM: break
-        if not user.bot:
-            msg = f"[{user.first_name}](tg://user?id={user.id}) {sebeb}"
-            await client.send_message(event.chat_id, msg)
+        if not member.user.is_bot:
+            await client.send_message(message.chat.id, f"[{member.user.first_name}](tg://user?id={member.user.id}) {sebeb}")
             await asyncio.sleep(1.5)
 
-@client.on(events.NewMessage(pattern=r'\.stoptag'))
-async def stop_tag(event):
+@app.on_message(filters.command("stoptag", prefixes=".") & filters.me)
+async def stoptag(client, message):
     global TAG_REJIM
-    if event.out:
-        TAG_REJIM = False
-        await event.edit("✅ Tag dayandırıldı.")
+    TAG_REJIM = False
+    await message.edit("✅ Tag dayandırıldı.")
 
-@client.on(events.NewMessage(pattern=r'\.hava (.*)'))
-async def hava_durumu(event):
-    if event.out: await event.edit(f"🌡 **Şəhər:** `{event.pattern_match.group(1)}` üçün hava məlumatı axtarılır...")
+# --- HAVA VƏ WİKİ ---
+@app.on_message(filters.command("hava", prefixes=".") & filters.me)
+async def hava(client, message):
+    city = message.text.split(None, 1)[1]
+    await message.edit(f"🌡 **Şəhər:** `{city}` üçün hava axtarılır...")
 
-@client.on(events.NewMessage(pattern=r'\.wiki (.*)'))
-async def wikipedia_search(event):
-    if not event.out: return
-    query = event.pattern_match.group(1)
+@app.on_message(filters.command("wiki", prefixes=".") & filters.me)
+async def wiki(client, message):
+    query = message.text.split(None, 1)[1]
     try:
         wikipedia.set_lang("az")
-        summary = wikipedia.summary(query, sentences=3)
-        await event.edit(f"📚 **Məlumat:** {summary}")
-    except: await event.edit("❌ Tapılmadı.")
+        res = wikipedia.summary(query, sentences=2)
+        await message.edit(f"📚 **Wiki:** {res}")
+    except: await message.edit("❌ Tapılmadı.")
 
-@client.on(events.NewMessage(pattern=r'\.shans'))
-async def shans_yoxla(event):
-    if event.out: await event.edit(f"🎲 Sənin şansın: **%{random.randint(0, 100)}**")
+# --- ŞANS, BOM, DİCE ---
+@app.on_message(filters.command("shans", prefixes=".") & filters.me)
+async def shans(client, message):
+    await message.edit(f"🎲 Sənin şansın: **%{random.randint(0, 100)}**")
 
-@client.on(events.NewMessage(pattern=r'\.bom'))
-async def bom_effect(event):
-    if event.out: await event.edit("💣"); await asyncio.sleep(0.8); await event.edit("💥 PARTLADI!")
+@app.on_message(filters.command("bom", prefixes=".") & filters.me)
+async def bom(client, message):
+    await message.edit("💣"); await asyncio.sleep(0.8); await message.edit("💥 PARTLADI!")
 
-@client.on(events.NewMessage(pattern=r'\.dice'))
-async def dice_roll(event):
-    if event.out: await event.edit(random.choice(["🎲", "🎯", "🏀", "⚽"]))
+@app.on_message(filters.command("dice", prefixes=".") & filters.me)
+async def dice(client, message):
+    await message.edit(random.choice(["🎲", "🎯", "🏀", "⚽"]))
 
-@client.on(events.NewMessage(pattern=r'\.yazi (.*)'))
-async def custom_font(event):
-    if event.out:
-        metn = event.pattern_match.group(1)
-        font_metn = metn.replace('a', 'α').replace('e', 'є').replace('i', 'ι').replace('s', 'ѕ')
-        await event.edit(f"✨ {font_metn}")
+# --- YAZI, TƏRCÜMƏ, SƏS ---
+@app.on_message(filters.command("yazi", prefixes=".") & filters.me)
+async def yazi(client, message):
+    metn = message.text.split(None, 1)[1]
+    font = metn.replace('a', 'α').replace('e', 'є').replace('i', 'ι')
+    await message.edit(f"✨ {font}")
 
-@client.on(events.NewMessage(pattern=r'\.tercume (az|ru|ing|fr)'))
-async def tercume_et(event):
-    if not event.out or not event.is_reply: return
-    dil_kodlari = {"az": "az", "ru": "ru", "ing": "en", "fr": "fr"}
-    hedef_dil = dil_kodlari.get(event.pattern_match.group(1))
-    reply_msg = await event.get_reply_message()
-    try:
-        tercume = GoogleTranslator(source='auto', target=hedef_dil).translate(reply_msg.text)
-        await event.edit(f"🌐 **Tərcümə:**\n{tercume}")
-    except: await event.edit("❌ Xəta!")
+@app.on_message(filters.command("tercume", prefixes=".") & filters.me)
+async def tercume(client, message):
+    if not message.reply_to_message: return
+    lang = message.command[1] if len(message.command) > 1 else "az"
+    res = GoogleTranslator(source='auto', target=lang).translate(message.reply_to_message.text)
+    await message.edit(f"🌐 **Tərcümə:**\n{res}")
 
-@client.on(events.NewMessage(pattern=r'\.ses(?:\s+(\w+))?(?:\s+(.*))?'))
-async def intelligent_tts(event):
-    if not event.out: return
-    arg1 = event.pattern_match.group(1)
-    arg2 = event.pattern_match.group(2)
-    target_lang = "tr"; text_to_process = ""
-    if event.is_reply:
-        reply_msg = await event.get_reply_message(); text_to_process = reply_msg.text
-        if arg1 and len(arg1) <= 4: target_lang = arg1
-    else:
-        if arg1 and arg2: target_lang, text_to_process = arg1, arg2
-        elif arg1: text_to_process = arg1
-    if not text_to_process: return await event.edit("❌ Mətn yoxdur.")
-    await event.edit("🎙 Hazırlanır...")
-    try:
-        tts = gTTS(text=text_to_process, lang="tr")
-        tts.save("voice.mp3")
-        await client.send_file(event.chat_id, "voice.mp3", voice_note=True)
-        await event.delete()
-    except: await event.edit("❌ Səs xətası.")
+@app.on_message(filters.command("ses", prefixes=".") & filters.me)
+async def ses(client, message):
+    text = message.reply_to_message.text if message.reply_to_message else message.text.split(None, 1)[1]
+    await message.edit("🎙 Hazırlanır...")
+    tts = gTTS(text=text, lang="tr")
+    tts.save("voice.mp3")
+    await client.send_voice(message.chat.id, "voice.mp3")
+    await message.delete()
 
-@client.on(events.NewMessage(pattern=r'\.afk ?(.*)'))
-async def afk_aktiv(event):
+# --- AFK ---
+@app.on_message(filters.command("afk", prefixes=".") & filters.me)
+async def afk_on(client, message):
     global AFK_REJIM, AFK_SEBEB
-    if event.out:
-        AFK_REJIM, AFK_SEBEB = True, event.pattern_match.group(1)
-        await event.edit(f"💤 AFK aktiv. Səbəb: {AFK_SEBEB}")
+    AFK_REJIM = True
+    AFK_SEBEB = message.text.split(None, 1)[1] if len(message.command) > 1 else "Yoxam."
+    await message.edit(f"💤 AFK aktiv: {AFK_SEBEB}")
 
-@client.on(events.NewMessage(incoming=True))
-async def afk_cavab(event):
-    if AFK_REJIM and event.is_private:
-        await event.respond(f"🤖 AFK-yam. Səbəb: {AFK_SEBEB}")
-
-@client.on(events.NewMessage(pattern=r'\.online'))
-async def afk_deaktiv(event):
+@app.on_message(filters.command("online", prefixes=".") & filters.me)
+async def afk_off(client, message):
     global AFK_REJIM
-    if event.out:
-        AFK_REJIM = False
-        await event.edit("✅ AFK söndürüldü.")
+    AFK_REJIM = False
+    await message.edit("✅ Onlaynam!")
 
-@client.on(events.NewMessage(incoming=True))
-async def auto_downloader(event):
-    text = event.text
-    if not text or not any(site in text for site in ["instagram.com", "tiktok.com", "youtube.com"]): return
-    status_msg = await event.reply("📥 Yüklenir...")
-    if not os.path.exists("downloads"): os.makedirs("downloads")
-    file_path = f'downloads/{event.id}.mp4'
-    try:
-        with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': file_path, 'quiet': True}) as ydl: ydl.download([text])
-        await event.reply("ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿", file=file_path)
-        await status_msg.delete()
-    except: await status_msg.edit("❌ Xəta.")
-    finally:
-        if os.path.exists(file_path): os.remove(file_path)
+@app.on_message(filters.incoming & filters.private)
+async def afk_handler(client, message):
+    if AFK_REJIM: await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
 
-@client.on(events.NewMessage(pattern=r'\.ban'))
-async def ban_user(event):
-    if not event.out or not event.is_group: return
-    r = await event.get_reply_message()
-    if r:
-        await client.edit_permissions(event.chat_id, r.sender_id, view_messages=False)
-        await event.edit("🚫 İstifadəçi ban edildi!")
-
-@client.on(events.NewMessage(pattern=r'\.kick'))
-async def kick_user(event):
-    if not event.out or not event.is_group: return
-    r = await event.get_reply_message()
-    if r:
-        await client.kick_participant(event.chat_id, r.sender_id)
-        await event.edit("👞 İstifadəçi qrupdan çıxarıldı!")
-
-@client.on(events.NewMessage(pattern=r'\.saat'))
-async def canli_saat(event):
-    if event.out:
-        for _ in range(5):
-            await event.edit(f"🕒 **Saat:** `{time.strftime('%H:%M:%S')}`")
-            await asyncio.sleep(1)
-
-@client.on(events.NewMessage(pattern=r'\.ters(?:\s+(.*))?'))
-async def ters_cevir(event):
-    if not event.out: return
-    text = event.pattern_match.group(1)
-    if event.is_reply: text = (await event.get_reply_message()).text
-    if text: await event.edit(text[::-1])
-
-@client.on(events.NewMessage(pattern=r'\.del'))
-async def mesaj_sil(event):
-    if event.out and event.is_reply:
-        await (await event.get_reply_message()).delete()
-        await event.delete()
-
-@client.on(events.NewMessage(pattern=r'\.pluginyukle'))
-async def plugin_yukle(event):
-    if not event.out or not event.is_reply: return
-    reply_message = await event.get_reply_message()
-    if reply_message.file and reply_message.file.name.endswith(".py"):
-        p_name = reply_message.file.name
-        p_path = os.path.join(PLUGINS_DIR, p_name)
-        content = await client.download_media(reply_message, bytes)
-        await plugins_db.update_one({"name": p_name}, {"$set": {"content": content}}, upsert=True)
-        with open(p_path, "wb") as f: f.write(content)
-        await event.edit(f"✅ {p_name} yükləndi!")
-        os.execl(sys.executable, sys.executable, *sys.argv)
-
-# --- MAIN ---
-async def main():
-    await client.start()
-    await tgbot.start(bot_token=BOT_TOKEN)
-    
-    async for p in plugins_db.find():
-        p_path = os.path.join(PLUGINS_DIR, p['name'])
-        with open(p_path, "wb") as f: f.write(p['content'])
+# --- DOWNLOADER ---
+@app.on_message(filters.incoming & ~filters.private)
+async def dl_handler(client, message):
+    if message.text and any(x in message.text for x in ["instagram.com", "tiktok.com", "youtube.com"]):
+        status = await message.reply("📥 Yüklenir...")
+        path = f"downloads/{message.id}.mp4"
         try:
-            spec = importlib.util.spec_from_file_location(p['name'][:-3], p_path)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-        except: continue
-            
-    print("✅ HT USERBOT ONLINE!")
-    await asyncio.gather(client.run_until_disconnected(), tgbot.run_until_disconnected())
+            with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: ydl.download([message.text])
+            await message.reply_video(path, caption="ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿")
+            await status.delete()
+        except: await status.edit("❌ Xəta.")
+        if os.path.exists(path): os.remove(path)
 
-if __name__ == '__main__':
-    asyncio.get_event_loop().run_until_complete(main())
+# --- ADMIN ---
+@app.on_message(filters.command("ban", prefixes=".") & filters.me)
+async def ban(client, message):
+    if message.reply_to_message:
+        await client.ban_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+        await message.edit("🚫 Ban edildi.")
+
+@app.on_message(filters.command("kick", prefixes=".") & filters.me)
+async def kick(client, message):
+    if message.reply_to_message:
+        await client.kick_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+        await message.edit("👞 Atıldı.")
+
+@app.on_message(filters.command("saat", prefixes=".") & filters.me)
+async def saat(client, message):
+    for _ in range(5):
+        await message.edit(f"🕒 **Saat:** `{time.strftime('%H:%M:%S')}`")
+        await asyncio.sleep(1)
+
+@app.on_message(filters.command("ters", prefixes=".") & filters.me)
+async def ters(client, message):
+    text = message.reply_to_message.text if message.reply_to_message else message.text.split(None, 1)[1]
+    await message.edit(text[::-1])
+
+@app.on_message(filters.command("del", prefixes=".") & filters.me)
+async def delete_msg(client, message):
+    if message.reply_to_message:
+        await message.reply_to_message.delete()
+        await message.delete()
+
+# --- MAIN RUN ---
+async def run():
+    await app.start()
+    await bot.start()
+    print("✅ HT USERBOT ONLINE!")
+    await asyncio.gather(app.run_until_disconnected(), bot.run_until_disconnected())
+
+if __name__ == "__main__":
+    asyncio.get_event_loop().run_until_complete(run())
