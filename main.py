@@ -42,34 +42,66 @@ if not os.path.exists(PLUGINS_DIR):
     os.makedirs(PLUGINS_DIR)
 
 # --- BUTONLU MENYU (.htmenu) ---
-@client.on(events.NewMessage(pattern=r'\.htmenu'))
-async def ht_menyu(event):
-    if event.out:
-        res = await client.get_me()
-        text = f"🌟 **ᎻᎢ ᏌᏚᎬᎡᏴOᎢ** 🌟\n\n👤 **Sahib:** [{res.first_name}](tg://user?id={res.id})\n\n🛠 **Komandalar üçün kateqoriya seçin:**"
+from telethon import events, Button
+import os
+
+# Komanda məlumat bazası (Buraya istədiyin qədər əlavə edə bilərsən)
+CMDS = {
+    "ses": "🎙 **Səs Sistemi**\n\n- `.ses [mətn]`: Yazını səsə çevirir (tr aksent).\n- `.ses [dil] [mətn]`: Tərcümə edib o dildə oxuyur.\n- *Nümunə:* `.ses ru Salam`",
+    "tag": "🏷 **Tag Sistemi**\n\n- `.tag [mətn]`: Qrupdakıları etiketləyir.\n- `.tagall`: Hamını tag edir.",
+    "ping": "🚀 **Ping**\n\n- `.ping`: Botun cavab vermə sürətini göstərir.",
+    "plug": "🔌 **Plugin**\n\n- `.pluginyukle`: Reply atılan `.py` faylını bota quraşdırır.",
+    "info": "ℹ️ **İnfo**\n\n- `.info`: İstifadəçi və ya çat haqqında məlumat verir.",
+    "del": "🗑 **Sil**\n\n- `.del`: Reply atılan mesajı silər."
+}
+
+@client.on(events.NewMessage(pattern=r'\.hthelp'))
+async def help_menu(event):
+    if not event.out: return
+    
+    # Butonları cüt-cüt düzürük
+    buttons = [
+        [Button.inline("🎙 Səs", data="h_ses"), Button.inline("🏷 Tag", data="h_tag")],
+        [Button.inline("🚀 Ping", data="h_ping"), Button.inline("🔌 Plugin", data="h_plug")],
+        [Button.inline("ℹ️ İnfo", data="h_info"), Button.inline("🗑 Sil", data="h_del")],
+        [Button.inline("❌ Menyunu Bağla", data="h_close")]
+    ]
+    
+    await event.edit("🛠 **HT USERBOT | Komanda Menyusu**\n\nMəlumat almaq üçün düymələrdən birini seçin:", buttons=buttons)
+
+@client.on(events.CallbackQuery())
+async def callback_handler(event):
+    # Təhlükəsizlik: Ancaq bot sahibi basa bilsin
+    me = await client.get_me()
+    if event.sender_id != me.id:
+        return await event.answer("⚠️ Bu menyu sənə aid deyil!", cache_time=60)
+
+    data = event.data.decode("utf-8")
+
+    if data.startswith("h_"):
+        key = data.split("_")[1]
+        
+        if key == "close":
+            await event.delete()
+            return
+        
+        # Məlumatı tapırıq
+        desc = CMDS.get(key, "⚠️ Bu komanda haqqında məlumat tapılmadı.")
+        
+        # Geri qayıtmaq üçün buton
+        back_btn = [[Button.inline("⬅️ Geri", data="h_main")]]
+        await event.edit(desc, buttons=back_btn)
+
+    elif data == "h_main":
+        # Əsas menyuya qayıdış
         buttons = [
-            [Button.inline("📁 Pluginlər", data="m_plug"), Button.inline("🎙 Səs/Dil", data="m_voice")],
-            [Button.inline("⚙️ Sistem", data="m_sys"), Button.inline("🎭 Əyləncə", data="m_fun")],
-            [Button.inline("🗑 Bağla", data="close")]
+            [Button.inline("🎙 Səs", data="h_ses"), Button.inline("🏷 Tag", data="h_tag")],
+            [Button.inline("🚀 Ping", data="h_ping"), Button.inline("🔌 Plugin", data="h_plug")],
+            [Button.inline("ℹ️ İnfo", data="h_info"), Button.inline("🗑 Sil", data="h_del")],
+            [Button.inline("❌ Menyunu Bağla", data="h_close")]
         ]
-        try:
-            await event.edit(text, buttons=buttons)
-        except:
-            await event.edit(text + "\n\n• `.ses` • `.htlive` • `.ping` • `.id` • `.tercume` • `.tagall` • `.filter`")
-
-@client.on(events.CallbackQuery)
-async def callback(event):
-    if event.data == b"m_plug":
-        await event.edit("📁 **Plugin Komandaları:**\n\n• `.pluginyukle` - Yeni plugin əlavə edər.")
-    elif event.data == b"m_voice":
-        await event.edit("🎙 **Səs və Dil:**\n\n• `.ses [mətn]` - Mətni səsə çevirər.\n• `.tercume [kod]` - Tərcümə edər.")
-    elif event.data == b"m_sys":
-        await event.edit("⚙️ **Sistem:**\n\n• `.ping` - Sürət.\n• `.id` - Məlumat.\n• `.saat` - Saat.\n• `.afk` - AFK rejimi.")
-    elif event.data == b"m_fun":
-        await event.edit("🎭 **Əyləncə:**\n\n• `.ters` - Çevirmə.\n• `.etiraf` - Etiraf.\n• `.yazi` - Fontlar.\n• `.bom` - Partlayış.")
-    elif event.data == b"close":
-        await event.delete()
-
+        await event.edit("🛠 **HT USERBOT | Komanda Menyusu**", buttons=buttons)
+        
 # --- HTLIVE KOMANDASI (.htlive) ---
 @client.on(events.NewMessage(pattern=r'\.htlive'))
 async def htlive(event):
