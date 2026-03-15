@@ -45,63 +45,87 @@ if not os.path.exists(PLUGINS_DIR):
 from telethon import events, Button
 import os
 
-# Komanda məlumat bazası (Buraya istədiyin qədər əlavə edə bilərsən)
-CMDS = {
-    "ses": "🎙 **Səs Sistemi**\n\n- `.ses [mətn]`: Yazını səsə çevirir (tr aksent).\n- `.ses [dil] [mətn]`: Tərcümə edib o dildə oxuyur.\n- *Nümunə:* `.ses ru Salam`",
-    "tag": "🏷 **Tag Sistemi**\n\n- `.tag [mətn]`: Qrupdakıları etiketləyir.\n- `.tagall`: Hamını tag edir.",
-    "ping": "🚀 **Ping**\n\n- `.ping`: Botun cavab vermə sürətini göstərir.",
-    "plug": "🔌 **Plugin**\n\n- `.pluginyukle`: Reply atılan `.py` faylını bota quraşdırır.",
-    "info": "ℹ️ **İnfo**\n\n- `.info`: İstifadəçi və ya çat haqqında məlumat verir.",
-    "del": "🗑 **Sil**\n\n- `.del`: Reply atılan mesajı silər."
+# Əsas komandaların məlumatı
+BASE_CMDS = {
+    "ses": "🎙 **Səs Sistemi**\nİstifadə: `.ses [mətn]` və ya `.ses [dil] [mətn]`",
+    "ping": "🚀 **Ping**\nBotun cavab sürətini göstərir.",
+    "plug": "🔌 **Plugin**\n`.pluginyukle` ilə yeni funksiyalar əlavə edin."
 }
 
 @client.on(events.NewMessage(pattern=r'\.hthelp'))
 async def help_menu(event):
     if not event.out: return
     
-    # Butonları cüt-cüt düzürük
     buttons = [
-        [Button.inline("🎙 Səs", data="h_ses"), Button.inline("🏷 Tag", data="h_tag")],
-        [Button.inline("🚀 Ping", data="h_ping"), Button.inline("🔌 Plugin", data="h_plug")],
-        [Button.inline("ℹ️ İnfo", data="h_info"), Button.inline("🗑 Sil", data="h_del")],
+        [Button.inline("🛠 Əsas Komandalar", data="open_base")],
+        [Button.inline("🔌 Yüklənmiş Pluginlər", data="open_plugins")],
         [Button.inline("❌ Menyunu Bağla", data="h_close")]
     ]
     
-    await event.edit("🛠 **HT USERBOT | Komanda Menyusu**\n\nMəlumat almaq üçün düymələrdən birini seçin:", buttons=buttons)
+    await event.edit("🌟 **HT USERBOT GÖZƏL MENYU**\n\nZəhmət olmasa bölməni seçin:", buttons=buttons)
 
 @client.on(events.CallbackQuery())
 async def callback_handler(event):
-    # Təhlükəsizlik: Ancaq bot sahibi basa bilsin
     me = await client.get_me()
     if event.sender_id != me.id:
-        return await event.answer("⚠️ Bu menyu sənə aid deyil!", cache_time=60)
+        return await event.answer("⚠️ Giriş qadağandır!", cache_time=60)
 
     data = event.data.decode("utf-8")
 
-    if data.startswith("h_"):
-        key = data.split("_")[1]
-        
-        if key == "close":
-            await event.delete()
-            return
-        
-        # Məlumatı tapırıq
-        desc = CMDS.get(key, "⚠️ Bu komanda haqqında məlumat tapılmadı.")
-        
-        # Geri qayıtmaq üçün buton
-        back_btn = [[Button.inline("⬅️ Geri", data="h_main")]]
-        await event.edit(desc, buttons=back_btn)
+    # 1. Əsas Komandalar Bölməsi
+    if data == "open_base":
+        base_buttons = []
+        # Komandaları 2-2 düzürük
+        keys = list(BASE_CMDS.keys())
+        for i in range(0, len(keys), 2):
+            row = [Button.inline(f"🔹 {keys[i]}", data=f"info_{keys[i]}")]
+            if i + 1 < len(keys):
+                row.append(Button.inline(f"🔹 {keys[i+1]}", data=f"info_{keys[i+1]}"))
+            base_buttons.append(row)
+        base_buttons.append([Button.inline("⬅️ Geri", data="h_main")])
+        await event.edit("🛠 **Əsas Komandalar:**", buttons=base_buttons)
 
+    # 2. Pluginlər Bölməsi (Avtomatik Faylları Tapır)
+    elif data == "open_plugins":
+        plugin_buttons = []
+        path = "plugins"
+        if os.path.exists(path):
+            files = [f[:-3] for f in os.listdir(path) if f.endswith(".py") and f != "__init__.py"]
+            for i in range(0, len(files), 2):
+                row = [Button.inline(f"📦 {files[i]}", data=f"pinfo_{files[i]}")]
+                if i + 1 < len(files):
+                    row.append(Button.inline(f"📦 {files[i+1]}", data=f"pinfo_{files[i+1]}"))
+                plugin_buttons.append(row)
+        
+        if not plugin_buttons:
+            return await event.answer("📭 Heç bir əlavə plugin tapılmadı!", alert=True)
+            
+        plugin_buttons.append([Button.inline("⬅️ Geri", data="h_main")])
+        await event.edit("🔌 **Yüklənmiş Pluginlər:**\n(Məlumat üçün üzərinə basın)", buttons=plugin_buttons)
+
+    # 3. Komanda və ya Plugin haqqında məlumat
+    elif data.startswith("info_"):
+        key = data.split("_")[1]
+        desc = BASE_CMDS.get(key, "Məlumat yoxdur.")
+        await event.edit(desc, buttons=[[Button.inline("⬅️ Geri", data="open_base")]])
+
+    elif data.startswith("pinfo_"):
+        p_name = data.split("_")[1]
+        await event.edit(f"📦 **Plugin:** `{p_name}`\n\nBu kənar plugin faylıdır. Komandalarını işlətmək üçün faylın içinə baxın.", 
+                         buttons=[[Button.inline("⬅️ Geri", data="open_plugins")]])
+
+    # Digər Naviqasiya
     elif data == "h_main":
-        # Əsas menyuya qayıdış
         buttons = [
-            [Button.inline("🎙 Səs", data="h_ses"), Button.inline("🏷 Tag", data="h_tag")],
-            [Button.inline("🚀 Ping", data="h_ping"), Button.inline("🔌 Plugin", data="h_plug")],
-            [Button.inline("ℹ️ İnfo", data="h_info"), Button.inline("🗑 Sil", data="h_del")],
+            [Button.inline("🛠 Əsas Komandalar", data="open_base")],
+            [Button.inline("🔌 Yüklənmiş Pluginlər", data="open_plugins")],
             [Button.inline("❌ Menyunu Bağla", data="h_close")]
         ]
-        await event.edit("🛠 **HT USERBOT | Komanda Menyusu**", buttons=buttons)
+        await event.edit("🌟 **HT USERBOT GÖZƏL MENYU**", buttons=buttons)
         
+    elif data == "h_close":
+        await event.delete()
+                
 # --- HTLIVE KOMANDASI (.htlive) ---
 @client.on(events.NewMessage(pattern=r'\.htlive'))
 async def htlive(event):
