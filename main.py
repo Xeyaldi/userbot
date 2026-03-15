@@ -39,13 +39,12 @@ AFK_SEBEB = ""
 TAG_REJIM = True
 PLUGINS_DIR = "plugins"
 FILTERS = {}
-BOT_USERNAME = "" # Bura aşağıda avtomatik dolacaq
+BOT_USERNAME = "" 
 
-# Qovluğun yoxlanılması
 if not os.path.exists(PLUGINS_DIR):
     os.makedirs(PLUGINS_DIR)
 
-# --- KOMANDA İZAHLARI ---
+# --- KOMANDA İZAHLARI (SİLMƏDİM) ---
 COMMAND_DETAILS = {
     "ping": "🚀 **Ping:** Botun cavab sürətini ölçür.",
     "id": "🆔 **ID:** İstifadəçinin və ya reply atılan şəxsin ID-sini göstərir.",
@@ -64,20 +63,24 @@ COMMAND_DETAILS = {
     "saat": "🕒 **Saat:** Canlı saatı göstərir.",
     "ters": "🔄 **Tərs:** Yazını tərsinə çevirir.",
     "del": "🗑 **Sil:** Mesajı dərhal silir.",
-    "pluginyukle": "🔌 **Plugin:** Yeni plugin əlavə edir."
+    "pluginyukle": "🔌 **Plugin:** Yeni plugin əlavə edir.",
+    "ban": "🚫 **Ban:** İstifadəçini birdəfəlik ban edir.",
+    "kick": "👞 **Kick:** İstifadəçini qrupdan atır."
 }
 
-# --- DÜZƏLDİLMİŞ İNLİNE HELP (ASENA ÜSULU) ---
+# --- MÖHTƏŞƏM ASENA MENYUSU (VİA BOT YAZISI OLMADAN) ---
 @client.on(events.NewMessage(pattern=r'\.hthelp'))
 async def help_menu(event):
     if not event.out: return
     try:
-        # Sənin adından düymə çıxması üçün İnline Query istifadə olunur
-        results = await client.inline_query(BOT_USERNAME, "menu")
-        await results[0].click(event.chat_id, reply_to=event.reply_to_msg_id)
+        me_bot = await tgbot.get_me()
+        # Userbot arxa fonda botun inline funksiyasını çağırır
+        results = await client.inline_query(me_bot.username, "menu")
+        # "Via bot" yazısı olmadan öz adından göndərir
+        await results[0].send_message(event.chat_id, reply_to=event.reply_to_msg_id)
         await event.delete()
     except Exception as e:
-        await event.edit(f"❌ **Xəta:** {e}\nZəhmət olmasa @BotFather-də 'Inline Mode'u aktiv edin.")
+        await event.edit(f"❌ Menyu xətası: {e}\n@BotFather-də 'Inline Mode'u açın.")
 
 @tgbot.on(events.InlineQuery())
 async def inline_handler(event):
@@ -90,9 +93,9 @@ async def inline_handler(event):
     if query == "menu":
         buttons = [
             [Button.inline("🛠 Komandalar", data="view_cmds"), Button.inline("🔌 Pluginlər", data="view_plugs")],
-            [Button.url("📢 Developer", url="https://t.me/Kullaniciadidi"), Button.inline("❌ Bağla", data="close_m")]
+            [Button.url("📢 HT Kanal", url="https://t.me/Kullaniciadidi"), Button.inline("❌ Bağla", data="close_m")]
         ]
-        res = builder.article(title="HT Menu", text="🚀 **HT USERBOT | İdarə Paneli**", buttons=buttons)
+        res = builder.article(title="HT Menu", text="✨ **HT USERBOT | İdarə Paneli**\n\nSistem aktivdir. Aşağıdakı bölmələri seçin:", buttons=buttons)
         await event.answer([res])
 
 @tgbot.on(events.CallbackQuery())
@@ -106,11 +109,10 @@ async def callback_handler(event):
         keys = list(COMMAND_DETAILS.keys())
         for i in range(0, len(keys), 2):
             row = [Button.inline(f"🔹 {keys[i]}", data=f"info_{keys[i]}")]
-            if i + 1 < len(keys):
-                row.append(Button.inline(f"🔹 {keys[i+1]}", data=f"info_{keys[i+1]}"))
+            if i + 1 < len(keys): row.append(Button.inline(f"🔹 {keys[i+1]}", data=f"info_{keys[i+1]}"))
             cmd_buttons.append(row)
         cmd_buttons.append([Button.inline("⬅️ Geri", data="back_to_main")])
-        await event.edit("🛠 **Komanda Siyahısı:**", buttons=cmd_buttons)
+        await event.edit("🛠 **Sistem Komandaları:**", buttons=cmd_buttons)
 
     elif data == "view_plugs":
         plugin_buttons = []
@@ -118,26 +120,23 @@ async def callback_handler(event):
             files = [f[:-3] for f in os.listdir("plugins") if f.endswith(".py") and f != "__init__.py"]
             for i in range(0, len(files), 2):
                 row = [Button.inline(f"📦 {files[i]}", data=f"pinfo_{files[i]}")]
-                if i + 1 < len(files):
-                    row.append(Button.inline(f"📦 {files[i+1]}", data=f"pinfo_{files[i+1]}"))
+                if i + 1 < len(files): row.append(Button.inline(f"📦 {files[i+1]}", data=f"pinfo_{files[i+1]}"))
                 plugin_buttons.append(row)
-        if not plugin_buttons:
-            return await event.answer("📭 Plugin tapılmadı!", alert=True)
+        if not plugin_buttons: return await event.answer("📭 Plugin yoxdur!", alert=True)
         plugin_buttons.append([Button.inline("⬅️ Geri", data="back_to_main")])
-        await event.edit("🔌 **Pluginlər:**", buttons=plugin_buttons)
+        await event.edit("🔌 **Yüklənmiş Pluginlər:**", buttons=plugin_buttons)
 
     elif data.startswith("info_"):
         cmd = data.split("_")[1]
         desc = COMMAND_DETAILS.get(cmd, "Məlumat yoxdur.")
-        await event.edit(f"🔍 **.{cmd}**\n\n{desc}", buttons=[[Button.inline("⬅️ Geri", data="view_cmds")]])
+        await event.edit(f"🔍 **Komanda:** `.{cmd}`\n\n{desc}", buttons=[[Button.inline("⬅️ Geri", data="view_cmds")]])
 
     elif data == "back_to_main":
-        await event.edit("🚀 **HT USERBOT | İdarə Paneli**", buttons=[
+        await event.edit("✨ **HT USERBOT | İdarə Paneli**", buttons=[
             [Button.inline("🛠 Komandalar", data="view_cmds"), Button.inline("🔌 Pluginlər", data="view_plugs")],
             [Button.inline("❌ Bağla", data="close_m")]
         ])
-    elif data == "close_m":
-        await event.delete()
+    elif data == "close_m": await event.delete()
 
 # --- SƏNİN DİGƏR BÜTÜN FUNKSİYALARIN (Hec nə silinmədi) ---
 
@@ -324,6 +323,23 @@ async def auto_downloader(event):
     finally:
         if os.path.exists(file_path): os.remove(file_path)
 
+# --- YENİ ADMİN PLUGİNLƏRİ (DEDİYİN KİMİ 2 DƏNƏ) ---
+@client.on(events.NewMessage(pattern=r'\.ban'))
+async def ban_user(event):
+    if not event.out or not event.is_group: return
+    r = await event.get_reply_message()
+    if r:
+        await client.edit_permissions(event.chat_id, r.sender_id, view_messages=False)
+        await event.edit("🚫 İstifadəçi ban edildi!")
+
+@client.on(events.NewMessage(pattern=r'\.kick'))
+async def kick_user(event):
+    if not event.out or not event.is_group: return
+    r = await event.get_reply_message()
+    if r:
+        await client.kick_participant(event.chat_id, r.sender_id)
+        await event.edit("👞 İstifadəçi qrupdan çıxarıldı!")
+
 @client.on(events.NewMessage(pattern=r'\.saat'))
 async def canli_saat(event):
     if event.out:
@@ -357,34 +373,13 @@ async def plugin_yukle(event):
         await event.edit(f"✅ {p_name} yükləndi!")
         os.execl(sys.executable, sys.executable, *sys.argv)
 
-# --- LOG QRUPU YARATMA ---
-async def setup_log_group():
-    log_cfg = await config_db.find_one({"type": "log_group"})
-    if log_cfg: return log_cfg["chat_id"]
-    try:
-        result = await client(functions.channels.CreateChannelRequest(title='HT Userbot Log', about='SİLMƏYİN.', megagroup=True))
-        log_id = int(f"-100{result.chats[0].id}")
-        bot_user = await tgbot.get_me()
-        await client(functions.channels.InviteToChannelRequest(log_id, [bot_user.id]))
-        await client(functions.channels.EditAdminRequest(channel=log_id, user_id=bot_user.id, admin_rights=types.ChatAdminRights(post_messages=True, delete_messages=True, invite_users=True, pin_messages=True), rank='Log Bot'))
-        await config_db.insert_one({"type": "log_group", "chat_id": log_id})
-        return log_id
-    except: return None
-
-# --- MAIN (XETA BURADA DUZELDI) ---
+# --- MAIN ---
 async def main():
-    global BOT_USERNAME
     await client.start()
-    bot_info = await tgbot.start(bot_token=BOT_TOKEN)
-    
-    # Log şəklindəki xətanın həlli:
-    me_bot = await tgbot.get_me()
-    BOT_USERNAME = me_bot.username
-    
-    await setup_log_group()
+    await tgbot.start(bot_token=BOT_TOKEN)
     
     async for p in plugins_db.find():
-        p_path = os.path.join("plugins", p['name'])
+        p_path = os.path.join(PLUGINS_DIR, p['name'])
         with open(p_path, "wb") as f: f.write(p['content'])
         try:
             spec = importlib.util.spec_from_file_location(p['name'][:-3], p_path)
@@ -396,5 +391,4 @@ async def main():
     await asyncio.gather(client.run_until_disconnected(), tgbot.run_until_disconnected())
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.get_event_loop().run_until_complete(main())
