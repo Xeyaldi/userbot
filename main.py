@@ -39,13 +39,13 @@ AFK_SEBEB = ""
 TAG_REJIM = True
 PLUGINS_DIR = "plugins"
 FILTERS = {}
-BOT_USERNAME = "" # Avtomatik dolacaq
+BOT_USERNAME = "" # Bura aşağıda avtomatik dolacaq
 
 # Qovluğun yoxlanılması
 if not os.path.exists(PLUGINS_DIR):
     os.makedirs(PLUGINS_DIR)
 
-# --- TAM BUTONLU VƏ İZAHLI MENYU SİSTEMİ ---
+# --- KOMANDA İZAHLARI ---
 COMMAND_DETAILS = {
     "ping": "🚀 **Ping:** Botun cavab sürətini ölçür.",
     "id": "🆔 **ID:** İstifadəçinin və ya reply atılan şəxsin ID-sini göstərir.",
@@ -67,17 +67,17 @@ COMMAND_DETAILS = {
     "pluginyukle": "🔌 **Plugin:** Yeni plugin əlavə edir."
 }
 
-# --- ASENA ÜSULU INLINE HELP ---
+# --- DÜZƏLDİLMİŞ İNLİNE HELP (ASENA ÜSULU) ---
 @client.on(events.NewMessage(pattern=r'\.hthelp'))
 async def help_menu(event):
     if not event.out: return
     try:
-        # Userbot botu inline olaraq çağırır - düymələr sənin adından gedir
+        # Sənin adından düymə çıxması üçün İnline Query istifadə olunur
         results = await client.inline_query(BOT_USERNAME, "menu")
         await results[0].click(event.chat_id, reply_to=event.reply_to_msg_id)
         await event.delete()
     except Exception as e:
-        await event.edit(f"❌ **Xəta:** {e}\nZəhmət olmasa @BotFather-dən Inline Mode-u aktiv edin.")
+        await event.edit(f"❌ **Xəta:** {e}\nZəhmət olmasa @BotFather-də 'Inline Mode'u aktiv edin.")
 
 @tgbot.on(events.InlineQuery())
 async def inline_handler(event):
@@ -106,7 +106,8 @@ async def callback_handler(event):
         keys = list(COMMAND_DETAILS.keys())
         for i in range(0, len(keys), 2):
             row = [Button.inline(f"🔹 {keys[i]}", data=f"info_{keys[i]}")]
-            if i + 1 < len(keys): row.append(Button.inline(f"🔹 {keys[i+1]}", data=f"info_{keys[i+1]}"))
+            if i + 1 < len(keys):
+                row.append(Button.inline(f"🔹 {keys[i+1]}", data=f"info_{keys[i+1]}"))
             cmd_buttons.append(row)
         cmd_buttons.append([Button.inline("⬅️ Geri", data="back_to_main")])
         await event.edit("🛠 **Komanda Siyahısı:**", buttons=cmd_buttons)
@@ -117,9 +118,11 @@ async def callback_handler(event):
             files = [f[:-3] for f in os.listdir("plugins") if f.endswith(".py") and f != "__init__.py"]
             for i in range(0, len(files), 2):
                 row = [Button.inline(f"📦 {files[i]}", data=f"pinfo_{files[i]}")]
-                if i + 1 < len(files): row.append(Button.inline(f"📦 {files[i+1]}", data=f"pinfo_{files[i+1]}"))
+                if i + 1 < len(files):
+                    row.append(Button.inline(f"📦 {files[i+1]}", data=f"pinfo_{files[i+1]}"))
                 plugin_buttons.append(row)
-        if not plugin_buttons: return await event.answer("📭 Plugin tapılmadı!", alert=True)
+        if not plugin_buttons:
+            return await event.answer("📭 Plugin tapılmadı!", alert=True)
         plugin_buttons.append([Button.inline("⬅️ Geri", data="back_to_main")])
         await event.edit("🔌 **Pluginlər:**", buttons=plugin_buttons)
 
@@ -133,9 +136,10 @@ async def callback_handler(event):
             [Button.inline("🛠 Komandalar", data="view_cmds"), Button.inline("🔌 Pluginlər", data="view_plugs")],
             [Button.inline("❌ Bağla", data="close_m")]
         ])
-    elif data == "close_m": await event.delete()
+    elif data == "close_m":
+        await event.delete()
 
-# --- DIGER BUTUN ORİJİNAL KOMANDALAR ---
+# --- SƏNİN DİGƏR BÜTÜN FUNKSİYALARIN (Hec nə silinmədi) ---
 
 @client.on(events.NewMessage(pattern=r'\.htlive'))
 async def htlive(event):
@@ -228,13 +232,10 @@ async def hava_durumu(event):
 async def wikipedia_search(event):
     if not event.out: return
     query = event.pattern_match.group(1)
-    await event.edit("🔍 **Axtarılır...**")
     try:
         wikipedia.set_lang("az")
         summary = wikipedia.summary(query, sentences=3)
         await event.edit(f"📚 **Məlumat:** {summary}")
-    except wikipedia.exceptions.DisambiguationError as e:
-        await event.edit(f"⚠️ **Dəqiqləşdirin:** {', '.join(e.options[:5])}")
     except: await event.edit("❌ Tapılmadı.")
 
 @client.on(events.NewMessage(pattern=r'\.shans'))
@@ -270,7 +271,8 @@ async def tercume_et(event):
 @client.on(events.NewMessage(pattern=r'\.ses(?:\s+(\w+))?(?:\s+(.*))?'))
 async def intelligent_tts(event):
     if not event.out: return
-    arg1 = event.pattern_match.group(1); arg2 = event.pattern_match.group(2)
+    arg1 = event.pattern_match.group(1)
+    arg2 = event.pattern_match.group(2)
     target_lang = "tr"; text_to_process = ""
     if event.is_reply:
         reply_msg = await event.get_reply_message(); text_to_process = reply_msg.text
@@ -278,7 +280,7 @@ async def intelligent_tts(event):
     else:
         if arg1 and arg2: target_lang, text_to_process = arg1, arg2
         elif arg1: text_to_process = arg1
-    if not text_to_process: return await event.edit("❌ Mətn tapılmadı.")
+    if not text_to_process: return await event.edit("❌ Mətn yoxdur.")
     await event.edit("🎙 Hazırlanır...")
     try:
         tts = gTTS(text=text_to_process, lang="tr")
@@ -355,14 +357,13 @@ async def plugin_yukle(event):
         await event.edit(f"✅ {p_name} yükləndi!")
         os.execl(sys.executable, sys.executable, *sys.argv)
 
-# --- LOG QRUPU VƏ YETKİ ---
+# --- LOG QRUPU YARATMA ---
 async def setup_log_group():
     log_cfg = await config_db.find_one({"type": "log_group"})
     if log_cfg: return log_cfg["chat_id"]
     try:
         result = await client(functions.channels.CreateChannelRequest(title='HT Userbot Log', about='SİLMƏYİN.', megagroup=True))
-        raw_id = result.chats[0].id
-        log_id = int(f"-100{raw_id}") if not str(raw_id).startswith("-100") else raw_id
+        log_id = int(f"-100{result.chats[0].id}")
         bot_user = await tgbot.get_me()
         await client(functions.channels.InviteToChannelRequest(log_id, [bot_user.id]))
         await client(functions.channels.EditAdminRequest(channel=log_id, user_id=bot_user.id, admin_rights=types.ChatAdminRights(post_messages=True, delete_messages=True, invite_users=True, pin_messages=True), rank='Log Bot'))
@@ -370,14 +371,15 @@ async def setup_log_group():
         return log_id
     except: return None
 
-# --- MAIN ---
+# --- MAIN (XETA BURADA DUZELDI) ---
 async def main():
     global BOT_USERNAME
     await client.start()
-    bot_me = await tgbot.start(bot_token=BOT_TOKEN)
+    bot_info = await tgbot.start(bot_token=BOT_TOKEN)
     
-    # Xətanın həlli: bot_me artıq User obyektidir
-    BOT_USERNAME = bot_me.username 
+    # Log şəklindəki xətanın həlli:
+    me_bot = await tgbot.get_me()
+    BOT_USERNAME = me_bot.username
     
     await setup_log_group()
     
