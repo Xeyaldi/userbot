@@ -297,12 +297,23 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
-# --- MAIN RUN ---
+# --- MAIN RUN (XƏTA DÜZƏLDİLDİ) ---
+from pyrogram import idle
+
 async def run():
     await app.start()
     await bot.start()
-    print("✅ HT USERBOT ONLINE!")
-    await asyncio.gather(app.run_until_disconnected(), bot.run_until_disconnected())
+    
+    # Botun adını loqda görmək üçün (istəyə bağlı)
+    me = await app.get_me()
+    print(f"✅ {me.first_name} USERBOT ONLINE!")
+    
+    # 'run_until_disconnected' yerinə Pyrogram-ın 'idle' funksiyası
+    await idle()
+    
+    # Bot dayandıqda client-ləri təhlükəsiz bağlamaq üçün
+    await app.stop()
+    await bot.stop()
 
 if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(run())
