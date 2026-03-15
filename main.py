@@ -21,15 +21,18 @@ API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION = os.environ.get("SESSION_STRING")
 MONGO_URL = os.environ.get("MONGO_URL") 
+BOT_TOKEN = os.environ.get("BOT_TOKEN") # Bot Tokeni buraya əlavə etdik
 
 # MongoDB Bağlantısını Başlat
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
 
-# Client-i təyin edirik (Səhv burada idi, obyekt düzgün yerdə olmalıdır)
+# Client-i təyin edirik
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
+# Botu həm Session, həm də Bot Token ilə başladan vacib sətir:
+client.start(bot_token=BOT_TOKEN)
 # Qlobal dəyişənlər
 AFK_REJIM = False
 AFK_SEBEB = ""
