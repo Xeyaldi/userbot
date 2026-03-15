@@ -13,6 +13,8 @@ import motor.motor_asyncio
 from gtts import gTTS
 from bs4 import BeautifulSoup
 from telethon import TelegramClient, events, Button, functions, types
+from telethon.sessions import StringSession
+from deep_translator import GoogleTranslator
 
 # Heroku Ayarları
 API_ID = int(os.environ.get("API_ID"))
@@ -25,11 +27,11 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
-config_db = db["config"] # Log qrupunu yadda saxlamaq üçün
+config_db = db["config"] # Log qrupunu yadda saxlamaq üçün bu lazımdır
 
 # Client-lər
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
-tgbot = TelegramClient("bot_session", API_ID, API_HASH) # .start() silindi, main-də başlayacaq
+tgbot = TelegramClient("bot_session", API_ID, API_HASH)
 
 # --- BUNDAN SONRA SƏNİN DİGƏR KOMANDALARIN GƏLİR ---
 # BUNDAN AŞAĞIYA ÖZ KOMANDALARINI VƏ PLUGİNLƏRİNİ YAPIŞDIRA BİLƏRSƏN
