@@ -396,55 +396,69 @@ async def mesaj_sil(event):
         await (await event.get_reply_message()).delete()
         await event.delete()
 
-# --- AVTOMATİK LOG QRUPU QURAN FUNKSİYA ---
+# --- AVTOMATİK QRUP YARATMA VE BOTA YETKİ VERMƏ ---
 async def setup_log_group():
-    # Bazada yoxlayırıq
+    # 1. Əvvəlcə bazada qrupun olub-olmadığını yoxlayırıq
     log_cfg = await config_db.find_one({"type": "log_group"})
     if log_cfg:
         return log_cfg["chat_id"]
 
     try:
-        # Yeni Log Qrupu Yaradırıq
+        # 2. Userbot (öz hesabın) yeni bir Megagroup yaradır
         result = await client(functions.channels.CreateChannelRequest(
             title='HT Userbot Log Grubu',
-            about='Userbot loqları və butonlar üçün avtomatik yaradılıb.',
+            about='Botun butonları tanıması üçün avtomatik yaradılıb. SİLMƏYİN.',
             megagroup=True
         ))
         log_chat_id = int(f"-100{result.chats[0].id}")
 
-        # Botu qrupa dəvət edib admin edirik
+        # 3. Köməkçi botun ID-sini alırıq
         bot_user = await tgbot.get_me()
-        await client(functions.channels.InviteToChannelRequest(log_chat_id, [bot_user.id]))
+        
+        # 4. Userbot botu həmin qrupa əlavə edir (dəvət edir)
+        await client(functions.channels.InviteToChannelRequest(
+            log_chat_id, 
+            [bot_user.id]
+        ))
+        
+        # 5. Userbot bota tam "Admin" yetkisi verir
         await client(functions.channels.EditAdminRequest(
             channel=log_chat_id,
             user_id=bot_user.id,
             admin_rights=types.ChatAdminRights(
-                post_messages=True, delete_messages=True, 
-                invite_users=True, pin_messages=True
+                post_messages=True,
+                delete_messages=True,
+                invite_users=True,
+                pin_messages=True,
+                add_admins=False,
+                manage_call=True
             ),
             rank='Köməkçi Bot'
         ))
 
-        # ID-ni bazaya yazırıq
+        # 6. Bu qrupun ID-sini bazaya yazırıq ki, hər dəfə təzə qrup açmasın
         await config_db.insert_one({"type": "log_group", "chat_id": log_chat_id})
-        await client.send_message(log_chat_id, "✅ **Log Qrupu Yaradıldı!**\nButonlar artıq aktivdir.")
+        
+        await client.send_message(log_chat_id, "✅ **Log Qrupu Hazırdır!**\nBotu avtomatik qrupa daxil etdim və yetki verdim.")
         return log_chat_id
     except Exception as e:
-        print(f"Log xətası: {e}")
+        print(f"⚠️ Avtomatik yetki xətası: {e}")
         return None
 
 # --- ƏSAS İŞƏSALMA ---
 async def main():
-    # Client-ləri başladırıq
+    # 1. Hesabları başladırıq
     await client.start()
     await tgbot.start(bot_token=BOT_TOKEN)
     
-    # Log sistemini yoxla/qur
+    # 2. Qrup və yetki işini həll edirik
     await setup_log_group()
     
-    # Pluginləri yüklə
+    # 3. Pluginləri MongoDB-dən yükləyirik
     async for plugin in plugins_db.find():
         p_path = os.path.join("plugins", plugin['name'])
+        if not os.path.exists("plugins"):
+            os.makedirs("plugins")
         with open(p_path, "wb") as f: 
             f.write(plugin['content'])
         try:
@@ -454,8 +468,8 @@ async def main():
         except: 
             continue
             
-    print("✅ HT USERBOT və Köməkçi Bot Hazırdır!")
-    # Canlı tuturuq
+    print("✅ HT USERBOT və Köməkçi Bot Tam Hazırdır!")
+    # Hər iki client-i canlı tuturuq
     await asyncio.gather(client.run_until_disconnected(), tgbot.run_until_disconnected())
 
 if __name__ == '__main__':
