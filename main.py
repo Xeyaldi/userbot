@@ -31,12 +31,13 @@ plugins_db = db["plugins"]
 # Client-i təyin edirik
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
-# Köhnə client.loop sətirlərini sil və bunu yapışdır:
+# ASINXRON BAŞLATMA (Xətaları həll edən əsas hissə)
 async def start_bot():
     await client.start(bot_token=BOT_TOKEN)
 
 client.loop.run_until_complete(start_bot())
 
+# BUNDAN AŞAĞIYA ÖZ KOMANDALARINI VƏ PLUGİNLƏRİNİ YAPIŞDIRA BİLƏRSƏN
 # Qlobal dəyişənlər
 AFK_REJIM = False
 AFK_SEBEB = ""
@@ -392,20 +393,32 @@ async def ters_cevir(event):
 @client.on(events.NewMessage(pattern=r'\.del'))
 async def mesaj_sil(event):
     if event.out and event.is_reply:
-        await (await event.get_reply_message()).delete(); await event.delete()
+        await (await event.get_reply_message()).delete()
+        await event.delete()
 
 async def main():
-    await client.start()
+    # Butonların və callback-lərin işləməsi üçün mütləq bot_token ilə başlayır
+    await client.start(bot_token=BOT_TOKEN)
+    
+    # Pluginləri bazadan çəkib yükləyən hissə
     async for plugin in plugins_db.find():
-        p_path = os.path.join(PLUGINS_DIR, plugin['name'])
-        with open(p_path, "wb") as f: f.write(plugin['content'])
+        p_path = os.path.join("plugins", plugin['name']) # PLUGINS_DIR yerinə "plugins" yazıldı
+        with open(p_path, "wb") as f: 
+            f.write(plugin['content'])
         try:
             spec = importlib.util.spec_from_file_location(plugin['name'][:-3], p_path)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-        except: continue
-    print("🚀 HT USERBOT Hazırdır!")
+        except: 
+            continue
+            
+    print("🚀 HT USERBOT Hazırdır və Butonlar Aktivdir!")
     await client.run_until_disconnected()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    # Logdakı "Event loop is closed" xətasını bu hissə tamamilə həll edir
+    try:
+        asyncio.run(main())
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
