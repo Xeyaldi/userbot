@@ -26,7 +26,7 @@ SESSION = os.environ.get("SESSION_STRING")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 MONGO_URL = os.environ.get("MONGO_URL")
 
-# Dizayn Ayarları
+# Dizayn Ayarları (Dəqiq sənin istədiklərin)
 HELP_IMG = "https://files.catbox.moe/34xlvu.jpg" 
 KANAL_URL = "https://t.me/ht_bots"
 KANAL_USER = "@ht_bots"
@@ -70,14 +70,13 @@ COMMAND_DETAILS = {
     "pluginyukle": "🔌 Yeni modul (.py) əlavə edir."
 }
 
-# --- DİNAMİK PLUGİN YÜKLƏYİCİ (ANINDA AKTİV EDİR) ---
+# --- DİNAMİK PLUGİN YÜKLƏYİCİ ---
 async def load_plugin_dynamically(name, path):
     try:
         spec = importlib.util.spec_from_file_location(name, path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         sys.modules[name] = module
-        print(f"✨ Modul sistemə daxil edildi: {name}")
         return True
     except Exception as e:
         print(f"❌ Modul yüklənmə xətası: {e}")
@@ -97,17 +96,16 @@ async def install_plugin(client, message):
     loc = os.path.join("plugins", doc.file_name)
     await client.download_media(message.reply_to_message, file_name=loc)
     
-    with open(loc, "r") as f:
+    with open(loc, "r", encoding="utf-8") as f:
         code = f.read()
     await plugins_db.update_one({"name": doc.file_name}, {"$set": {"code": code}}, upsert=True)
     
-    # Anında modulu işə sal
     success = await load_plugin_dynamically(doc.file_name.replace(".py", ""), loc)
     
     if success:
-        await message.edit(f"✅ **Uğurlu!**\n📦 Modul: `{doc.file_name}`\n🚀 Status: **Aktivdir**\n\n_Botu restart etməyə ehtiyac yoxdur._")
+        await message.edit(f"✅ **HT USERBOT**\n\n📦 Modul: `{doc.file_name}`\n🚀 Status: **Aktivdir**\n\n_Restart etməyə ehtiyac yoxdur._")
     else:
-        await message.edit(f"⚠️ Modul bazaya yazıldı, lakin işə salınarkən xəta baş verdi. Loglara baxın.")
+        await message.edit(f"⚠️ Modul bazaya yazıldı, lakin işə salınarkən xəta baş verdi.")
 
 # --- YARDIM MENYUSU ---
 @app.on_message(filters.command("hthelp", prefixes=".") & filters.me)
@@ -117,23 +115,18 @@ async def help_menu(client, message):
         await client.send_inline_bot_result(message.chat.id, results.query_id, results.results[0].id)
         await message.delete()
     except Exception:
-        # İNLİNE OLMAYAN YERLƏRDƏ GÖZƏL YAZI MENYUSU
         help_text = f"┏━━━━━━━━━━━━━━┓\n  ✨ **HT USERBOT | MENU**\n┗━━━━━━━━━━━━━━┛\n\n"
         for cmd, desc in COMMAND_DETAILS.items():
             help_text += f"▪️ `.{cmd}` : {desc}\n"
-        
         help_text += f"\n📢 **Kanal:** {KANAL_USER}"
-        
-        await message.edit(help_text, reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🛡 HT Bots Support", url=KANAL_URL)]
-        ]))
+        await message.edit(help_text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📢 RƏSMİ KANAL", url=KANAL_URL)]]))
 
 @bot.on_inline_query()
 async def inline_handler(client, query):
     if query.query == "menu":
         buttons = [
             [InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")],
-            [InlineKeyboardButton("📢 HT Kanal", url=KANAL_URL), InlineKeyboardButton("❌ Bağla", callback_data="close_m")]
+            [InlineKeyboardButton("📢 RƏSMİ KANAL", url=KANAL_URL), InlineKeyboardButton("❌ Bağla", callback_data="close_m")]
         ]
         await query.answer([
             InlineQueryResultArticle(
@@ -141,7 +134,8 @@ async def inline_handler(client, query):
                 description="İdarəetmə Paneli",
                 thumb_url=HELP_IMG,
                 input_message_content=InputTextMessageContent(
-                    f"✨ **HT USERBOT | İdarə Paneli**\n\n👤 **İstifadəçi:** {app.me.first_name}\n🛡 **Sistem:** Aktiv\n📢 **Rəsmi Kanal:** {KANAL_USER}\n\n_Aşağıdakı düymələrlə komandalara baxa bilərsiniz._"
+                    f"[\u200b]({HELP_IMG})✨ **HT USERBOT | İdarə Paneli**\n\n👤 **İstifadəçi:** {app.me.first_name}\n🛡 **Sistem:** Aktiv\n📢 **Kanal:** {KANAL_USER}\n\n_Komandalar üçün aşağıdakı düyməyə vurun._",
+                    parse_mode=enums.ParseMode.MARKDOWN
                 ),
                 reply_markup=InlineKeyboardMarkup(buttons)
             )
@@ -150,6 +144,14 @@ async def inline_handler(client, query):
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
     data = callback_query.data
+    
+    # Əsas menyu mətni və butonları (Geri qayıdanda eyni qalması üçün)
+    main_text = f"[\u200b]({HELP_IMG})✨ **HT USERBOT | İdarə Paneli**\n\n👤 **İstifadəçi:** {app.me.first_name}\n🛡 **Sistem:** Aktiv\n📢 **Kanal:** {KANAL_USER}\n\n_Komandalar üçün aşağıdakı düyməyə vurun._"
+    main_buttons = [
+        [InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")],
+        [InlineKeyboardButton("📢 RƏSMİ KANAL", url=KANAL_URL), InlineKeyboardButton("❌ Bağla", callback_data="close_m")]
+    ]
+
     if data == "view_cmds":
         cmd_buttons = []
         keys = list(COMMAND_DETAILS.keys())
@@ -158,28 +160,30 @@ async def callback_handler(client, callback_query):
             if i + 1 < len(keys): row.append(InlineKeyboardButton(f"🔹 {keys[i+1]}", callback_data=f"info_{keys[i+1]}"))
             cmd_buttons.append(row)
         cmd_buttons.append([InlineKeyboardButton("⬅️ Geri", callback_data="back")])
-        await callback_query.edit_message_text("🛠 **HT USERBOT Komandaları:**", reply_markup=InlineKeyboardMarkup(cmd_buttons))
+        await callback_query.edit_message_text(f"[\u200b]({HELP_IMG})🛠 **Komanda Siyahısı:**", reply_markup=InlineKeyboardMarkup(cmd_buttons))
+    
     elif data.startswith("info_"):
         cmd = data.split("_")[1]
         desc = COMMAND_DETAILS.get(cmd, "Məlumat yoxdur.")
-        await callback_query.edit_message_text(f"🔍 **Komanda:** `.{cmd}`\n\n{desc}\n\n🛡 {KANAL_USER}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Geri", callback_data="view_cmds")]]))
+        await callback_query.edit_message_text(f"[\u200b]({HELP_IMG})🔍 **Komanda:** `.{cmd}`\n\n{desc}\n\n🛡 {KANAL_USER}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Geri", callback_data="view_cmds")]]))
+    
     elif data == "back":
-        await callback_query.edit_message_text(f"✨ **HT USERBOT | İdarə Paneli**\n\n📢 Kanal: {KANAL_USER}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")]]))
+        await callback_query.edit_message_text(main_text, reply_markup=InlineKeyboardMarkup(main_buttons))
+    
     elif data == "close_m":
         await callback_query.message.delete()
 
-# --- .htlive ---
+# --- Sənin Köhnə Komandaların (Heç nə silinməyib) ---
+
 @app.on_message(filters.command("htlive", prefixes=".") & filters.me)
 async def htlive(client, message):
     res = client.me
     font_text = f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ [{res.first_name}](tg://user?id={res.id}) ϋçϋи αктινdιя"
     await message.edit(f"🚀 {font_text}")
 
-# --- FİLTER SİSTEMİ ---
 @app.on_message(filters.command("filter", prefixes=".") & filters.me)
 async def filter_add(client, message):
-    if not message.reply_to_message:
-        return await message.edit("❌ Filter üçün bir mesaja reply at gaga!")
+    if not message.reply_to_message: return await message.edit("❌ Filter üçün bir mesaja reply at!")
     keyword = message.text.split(None, 1)[1].lower()
     chat_id = message.chat.id
     if chat_id not in FILTERS: FILTERS[chat_id] = {}
@@ -200,10 +204,8 @@ async def filter_handler(client, message):
     chat_id = message.chat.id
     if chat_id in FILTERS:
         word = message.text.lower()
-        if word in FILTERS[chat_id]:
-            await message.reply_to_message(FILTERS[chat_id][word])
+        if word in FILTERS[chat_id]: await message.reply_to_message(FILTERS[chat_id][word])
 
-# --- PİNG VƏ ID ---
 @app.on_message(filters.command("ping", prefixes=".") & filters.me)
 async def ping(client, message):
     start = time.time()
@@ -218,13 +220,11 @@ async def get_id(client, message):
         await message.edit(f"🆔 **ID:** `{user.id}`\n👤 **Ad:** {user.first_name}")
     else: await message.edit(f"🆔 **Sənin ID-in:** `{message.from_user.id}`")
 
-# --- ETİRAF ---
 @app.on_message(filters.command("etiraf", prefixes=".") & filters.me)
 async def etiraf(client, message):
     etiraflar = ["Dünən gizlicə soyuducunu boşaltmışam... 🤫", "Mən əslində bir bot deyiləm 🛸"]
     await message.edit(f"💭 **Etirafım:** {random.choice(etiraflar)}")
 
-# --- TAGALL ---
 @app.on_message(filters.command("tagall", prefixes=".") & filters.me)
 async def tagall(client, message):
     global TAG_REJIM
@@ -237,8 +237,7 @@ async def tagall(client, message):
             if not member.user.is_bot:
                 await client.send_message(message.chat.id, f"[{member.user.first_name}](tg://user?id={member.user.id}) {sebeb}")
                 await asyncio.sleep(1.5)
-    except FloodWait as e:
-        await asyncio.sleep(e.value)
+    except FloodWait as e: await asyncio.sleep(e.value)
 
 @app.on_message(filters.command("stoptag", prefixes=".") & filters.me)
 async def stoptag(client, message):
@@ -246,7 +245,6 @@ async def stoptag(client, message):
     TAG_REJIM = False
     await message.edit("✅ Tag dayandırıldı.")
 
-# --- HAVA VƏ WİKİ ---
 @app.on_message(filters.command("hava", prefixes=".") & filters.me)
 async def hava(client, message):
     if len(message.command) < 2: return
@@ -263,20 +261,16 @@ async def wiki(client, message):
         await message.edit(f"📚 **Wiki:** {res}")
     except: await message.edit("❌ Tapılmadı.")
 
-# --- ŞANS, BOM, DİCE ---
 @app.on_message(filters.command("shans", prefixes=".") & filters.me)
-async def shans(client, message):
-    await message.edit(f"🎲 Sənin şansın: **%{random.randint(0, 100)}**")
+async def shans(client, message): await message.edit(f"🎲 Sənin şansın: **%{random.randint(0, 100)}**")
 
 @app.on_message(filters.command("bom", prefixes=".") & filters.me)
 async def bom(client, message):
     await message.edit("💣"); await asyncio.sleep(0.8); await message.edit("💥 PARTLADI!")
 
 @app.on_message(filters.command("dice", prefixes=".") & filters.me)
-async def dice(client, message):
-    await message.edit(random.choice(["🎲", "🎯", "🏀", "⚽"]))
+async def dice(client, message): await message.edit(random.choice(["🎲", "🎯", "🏀", "⚽"]))
 
-# --- YAZI, TƏRCÜMƏ, SƏS ---
 @app.on_message(filters.command("yazi", prefixes=".") & filters.me)
 async def yazi(client, message):
     if len(message.command) < 2: return
@@ -301,7 +295,6 @@ async def ses(client, message):
     await client.send_voice(message.chat.id, "voice.mp3")
     await message.delete()
 
-# --- AFK ---
 @app.on_message(filters.command("afk", prefixes=".") & filters.me)
 async def afk_on(client, message):
     global AFK_REJIM, AFK_SEBEB
@@ -319,20 +312,16 @@ async def afk_off(client, message):
 async def afk_handler(client, message):
     if AFK_REJIM: await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
 
-# --- DOWNLOADER ---
 @app.on_message(filters.incoming & filters.text & ~filters.me)
 async def dl_handler(client, message):
     if any(x in message.text for x in ["instagram.com", "tiktok.com", "youtube.com"]):
         try:
             path = f"downloads/{message.id}.mp4"
-            with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: 
-                ydl.download([message.text])
+            with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: ydl.download([message.text])
             await message.reply_video(path, caption=f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿\n{KANAL_USER}")
             if os.path.exists(path): os.remove(path)
-        except Exception:
-            pass 
+        except Exception: pass 
 
-# --- ADMIN ---
 @app.on_message(filters.command("ban", prefixes=".") & filters.me)
 async def ban(client, message):
     if message.reply_to_message:
@@ -362,25 +351,21 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
-# --- MODULLARI BAZADAN YÜKLƏMƏ VƏ AKTİVLƏŞDİRMƏ ---
+# --- SİSTEM BAŞLATMA ---
 async def load_stored_plugins():
     if not os.path.exists("plugins"): os.makedirs("plugins")
     async for plugin in plugins_db.find():
-        name = plugin.get("name")
-        code = plugin.get("code")
+        name, code = plugin.get("name"), plugin.get("code")
         if name and code:
             path = os.path.join("plugins", name)
-            with open(path, "w") as f:
-                f.write(code)
+            with open(path, "w", encoding="utf-8") as f: f.write(code)
             await load_plugin_dynamically(name.replace(".py", ""), path)
 
-# --- MAIN RUN ---
 async def run():
     await load_stored_plugins() 
     await app.start()
     await bot.start()
-    async for dialog in app.get_dialogs(limit=5):
-        pass
+    async for dialog in app.get_dialogs(limit=5): pass
     print(f"✅ HT USERBOT ONLINE! Kanal: {KANAL_USER}")
     await idle()
     await app.stop()
