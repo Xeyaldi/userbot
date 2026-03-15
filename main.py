@@ -75,13 +75,13 @@ async def help_menu(event):
     # Ana butonlar
     buttons = [
         [Button.inline("🛠 Komandalar", data="view_cmds"), Button.inline("🔌 Pluginlər", data="view_plugs")],
-        [Button.url("👨‍💻 Developer", url="https://t.me/Kullaniciadidi"), Button.inline("❌ Bağla", data="close_m")]
+        [Button.url("📢 Developer", url="https://t.me/Kullaniciadidi"), Button.inline("❌ Bağla", data="close_m")]
     ]
     
     await event.delete()
     # Butonları göndərən hissə (tgbot istifadə olunur)
     await tgbot.send_message(event.chat_id, "🚀 **HT USERBOT | İdarə Paneli**", buttons=buttons)
-
+    
 @tgbot.on(events.CallbackQuery())
 async def callback_handler(event):
     me = await client.get_me()
