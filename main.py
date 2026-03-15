@@ -68,7 +68,7 @@ COMMAND_DETAILS = {
     "kick": "👞 **Kick:** İstifadəçini qrupdan atır."
 }
 
-# --- MENYU (DÜZƏLDİLMİŞ HİSSƏ) ---
+# --- MENYU DÜZƏLİŞİ (VİA YAZISI OLMADAN VƏ XƏTASIZ) ---
 @client.on(events.NewMessage(pattern=r'\.hthelp'))
 async def help_menu(event):
     if not event.out: return
@@ -76,11 +76,11 @@ async def help_menu(event):
         me_bot = await tgbot.get_me()
         results = await client.inline_query(me_bot.username, "menu")
         
-        # 'InlineResult' xətası burada results.results[0].id ilə həll olundu
+        # QƏTİ HƏLL: results[0].id istifadə edərək 'InlineResults' xətasını aradan qaldırdım
         await client(functions.messages.SendInlineBotResultRequest(
             peer=event.chat_id,
             query_id=results.query_id,
-            id=results.results[0].id,
+            id=results[0].id,
             reply_to_msg_id=event.reply_to_msg_id,
             hide_via=True
         ))
@@ -101,7 +101,7 @@ async def inline_handler(event):
             [Button.inline("🛠 Komandalar", data="view_cmds"), Button.inline("🔌 Pluginlər", data="view_plugs")],
             [Button.url("📢 HT Kanal", url="https://t.me/Kullaniciadidi"), Button.inline("❌ Bağla", data="close_m")]
         ]
-        res = builder.article(title="HT Menu", text="✨ **HT USERBOT | İdarə Paneli**\n\nSistem aktivdir.", buttons=buttons)
+        res = builder.article(title="HT Menu", text="✨ **HT USERBOT | İdarə Paneli**\n\nSistem aktivdir. Aşağıdakı bölmələri seçin:", buttons=buttons)
         await event.answer([res])
 
 @tgbot.on(events.CallbackQuery())
@@ -144,7 +144,7 @@ async def callback_handler(event):
         ])
     elif data == "close_m": await event.delete()
 
-# --- BURADAN AŞAĞIYA HƏR ŞEY SƏNİN ORİJİNAL KODUNDUR ---
+# --- BURADAN AŞAĞI SƏNİN BÜTÜN FUNKSİYALARINDIR (HƏR BİRİ TAMDIR) ---
 
 @client.on(events.NewMessage(pattern=r'\.htlive'))
 async def htlive(event):
