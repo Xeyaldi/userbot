@@ -6,6 +6,7 @@ import wikipedia
 import requests
 import yt_dlp
 import motor.motor_asyncio
+import importlib.util
 from pyrogram import Client, filters, enums, idle
 from pyrogram.types import (
     InlineKeyboardMarkup, 
@@ -41,47 +42,66 @@ FILTERS = {}
 
 # --- KOMANDA İZAHLARI ---
 COMMAND_DETAILS = {
-    "ping": "🚀 **Ping:** Botun sürətini ölçür.",
-    "id": "🆔 **ID:** İstifadəçi ID-sini göstərir.",
-    "etiraf": "💭 **Etiraf:** Təsadüfi etiraf mesajı göndərir.",
-    "tagall": "📣 **TagAll:** Hamını etiketləyir.",
-    "wiki": "📚 **Wiki:** Wikipedia axtarışı.",
-    "hava": "🌡 **Hava:** Hava proqnozu.",
-    "shans": "🎲 **Şans:** Şans faizi.",
-    "bom": "💣 **BOM:** Partlayış effekti.",
-    "dice": "🎲 **Dice:** Təsadüfi oyun ikonları.",
-    "yazi": "✨ **Yazı:** Şrifti dəyişir.",
-    "tercume": "🌐 **Tərcümə:** Mesajı tərcümə edir.",
-    "ses": "🎙 **Səs:** Yazını səsə çevirir.",
-    "afk": "💤 **AFK:** AFK rejimini açır.",
-    "online": "✅ **Online:** AFK-nı söndürür.",
-    "saat": "🕒 **Saat:** Canlı saat.",
-    "ters": "🔄 **Tərs:** Yazını tərsinə çevirir.",
-    "del": "🗑 **Sil:** Mesajı silir.",
-    "ban": "🚫 **Ban:** İstifadəçini ban edir.",
-    "kick": "👞 **Kick:** İstifadəçini qrupdan atır."
+    "ping": "🚀 Botun sürətini ölçür.",
+    "id": "🆔 İstifadəçi ID-sini göstərir.",
+    "etiraf": "💭 Təsadüfi etiraf mesajı göndərir.",
+    "tagall": "📣 Hamını etiketləyir.",
+    "wiki": "📚 Wikipedia axtarışı.",
+    "hava": "🌡 Hava proqnozu.",
+    "shans": "🎲 Şans faizi.",
+    "bom": "💣 Partlayış effekti.",
+    "dice": "🎲 Təsadüfi oyun ikonları.",
+    "yazi": "✨ Şrifti dəyişir.",
+    "tercume": "🌐 Mesajı tərcümə edir.",
+    "ses": "🎙 Yazını səsə çevirir.",
+    "afk": "💤 AFK rejimini açır.",
+    "online": "✅ AFK-nı söndürür.",
+    "saat": "🕒 Canlı saat.",
+    "ters": "🔄 Yazını tərsinə çevirir.",
+    "del": "🗑 Mesajı silir.",
+    "ban": "🚫 İstifadəçini ban edir.",
+    "kick": "👞 İstifadəçini qrupdan atır.",
+    "pluginyukle": "🔌 Yeni modul (.py) əlavə edir."
 }
 
-# --- YARDIM MENYUSU ---
+# --- PLUGİN YÜKLƏMƏ SİSTEMİ ---
+@app.on_message(filters.command("pluginyukle", prefixes=".") & filters.me)
+async def install_plugin(client, message):
+    if not message.reply_to_message or not message.reply_to_message.document:
+        return await message.edit("❌ Lütfən bir `.py` faylına reply atın!")
+    
+    doc = message.reply_to_message.document
+    if not doc.file_name.endswith(".py"):
+        return await message.edit("❌ Sadece `.py` faylları yüklənə bilər.")
+
+    await message.edit("📥 Modul yüklənir...")
+    loc = os.path.join("plugins", doc.file_name)
+    await client.download_media(message.reply_to_message, file_name=loc)
+    
+    # MongoDB-yə qeyd et
+    with open(loc, "r") as f:
+        code = f.read()
+    await plugins_db.update_one({"name": doc.file_name}, {"$set": {"code": code}}, upsert=True)
+    
+    await message.edit(f"✅ `{doc.file_name}` uğurla quraşdırıldı və bazaya yazıldı!")
+
+# --- YARDIM MENYUSU (TƏKMİLLƏŞMİŞ) ---
 @app.on_message(filters.command("hthelp", prefixes=".") & filters.me)
 async def help_menu(client, message):
     try:
+        # Inline rejimini yoxla
         results = await client.get_inline_bot_results(bot.me.username, "menu")
-        await client.send_inline_bot_result(
-            message.chat.id, 
-            results.query_id, 
-            results.results[0].id
-            # hide_via SİLİNDİ (XƏTA BURADA İDİ)
-        )
+        await client.send_inline_bot_result(message.chat.id, results.query_id, results.results[0].id)
         await message.delete()
-    except Exception as e:
-        # Əgər inline query hələ aktiv deyilsə, alternativ mesaj
-        await bot.send_message(
-            message.chat.id, 
-            "✨ **HT USERBOT | İdarə Paneli**\n\nKomandalar üçün düyməyə basın:",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")]])
-        )
-        await message.delete()
+    except Exception:
+        # Əgər inline xəta verərsə (məsələn qrupda bot icazəsi yoxdursa) normal mesaj göndər
+        help_text = "✨ **HT USERBOT | Komandalar Menyusu**\n\n"
+        for cmd, desc in COMMAND_DETAILS.items():
+            help_text += f"🔹 `.{cmd}` : {desc}\n"
+        
+        await message.edit(help_text, reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 Kanal", url="https://t.me/Kullaniciadidi")]
+        ]))
 
 @bot.on_inline_query()
 async def inline_handler(client, query):
@@ -313,11 +333,22 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
+# --- MODULLARI BAZADAN YÜKLƏMƏ ---
+async def load_stored_plugins():
+    if not os.path.exists("plugins"): os.makedirs("plugins")
+    async for plugin in plugins_db.find():
+        name = plugin["name"]
+        code = plugin["code"]
+        path = os.path.join("plugins", name)
+        with open(path, "w") as f:
+            f.write(code)
+        print(f"📦 Modul yükləndi: {name}")
+
 # --- MAIN RUN ---
 async def run():
+    await load_stored_plugins() # Açılışda pluginləri yüklə
     await app.start()
     await bot.start()
-    # Bazanı tanımaq üçün kiçik dövr (Peer ID xətası üçün vacibdir)
     async for dialog in app.get_dialogs(limit=5):
         pass
     print("✅ HT USERBOT ONLINE!")
