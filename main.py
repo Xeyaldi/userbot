@@ -75,26 +75,24 @@ async def install_plugin(client, message):
         return await message.edit("❌ Sadece `.py` faylları yüklənə bilər.")
 
     await message.edit("📥 Modul yüklənir...")
+    if not os.path.exists("plugins"): os.makedirs("plugins")
     loc = os.path.join("plugins", doc.file_name)
     await client.download_media(message.reply_to_message, file_name=loc)
     
-    # MongoDB-yə qeyd et
     with open(loc, "r") as f:
         code = f.read()
     await plugins_db.update_one({"name": doc.file_name}, {"$set": {"code": code}}, upsert=True)
     
     await message.edit(f"✅ `{doc.file_name}` uğurla quraşdırıldı və bazaya yazıldı!")
 
-# --- YARDIM MENYUSU (TƏKMİLLƏŞMİŞ) ---
+# --- YARDIM MENYUSU ---
 @app.on_message(filters.command("hthelp", prefixes=".") & filters.me)
 async def help_menu(client, message):
     try:
-        # Inline rejimini yoxla
         results = await client.get_inline_bot_results(bot.me.username, "menu")
         await client.send_inline_bot_result(message.chat.id, results.query_id, results.results[0].id)
         await message.delete()
     except Exception:
-        # Əgər inline xəta verərsə (məsələn qrupda bot icazəsi yoxdursa) normal mesaj göndər
         help_text = "✨ **HT USERBOT | Komandalar Menyusu**\n\n"
         for cmd, desc in COMMAND_DETAILS.items():
             help_text += f"🔹 `.{cmd}` : {desc}\n"
@@ -333,20 +331,24 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
-# --- MODULLARI BAZADAN YÜKLƏMƏ ---
+# --- MODULLARI BAZADAN YÜKLƏMƏ (DÜZƏLDİLMİŞ) ---
 async def load_stored_plugins():
-    if not os.path.exists("plugins"): os.makedirs("plugins")
+    if not os.path.exists("plugins"): 
+        os.makedirs("plugins")
+    
     async for plugin in plugins_db.find():
-        name = plugin["name"]
-        code = plugin["code"]
-        path = os.path.join("plugins", name)
-        with open(path, "w") as f:
-            f.write(code)
-        print(f"📦 Modul yükləndi: {name}")
+        name = plugin.get("name")
+        code = plugin.get("code") # get() istifadə etdik ki, KeyError verməsin
+        
+        if name and code:
+            path = os.path.join("plugins", name)
+            with open(path, "w") as f:
+                f.write(code)
+            print(f"📦 Modul yükləndi: {name}")
 
 # --- MAIN RUN ---
 async def run():
-    await load_stored_plugins() # Açılışda pluginləri yüklə
+    await load_stored_plugins() 
     await app.start()
     await bot.start()
     async for dialog in app.get_dialogs(limit=5):
