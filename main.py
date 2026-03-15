@@ -412,11 +412,18 @@ async def mesaj_sil(event):
         await (await event.get_reply_message()).delete()
         await event.delete()
 
+
 async def main():
-    # Botu başladırıq
-    await client.start(bot_token=BOT_TOKEN)
+    # 1. Userbotu (öz hesabını) başladırıq
+    await client.connect()
+    if not await client.is_user_authorized():
+        await client.start()
     
-    # Pluginləri yükləyirik
+    # 2. Butonlar üçün rəsmi Botu (tgbot) başladırıq
+    # Bu sətir logdakı "did not login" xətasını həll edir
+    await tgbot.start(bot_token=BOT_TOKEN)
+    
+    # Pluginləri MongoDB-dən yükləyirik
     async for plugin in plugins_db.find():
         p_path = os.path.join("plugins", plugin['name'])
         with open(p_path, "wb") as f: 
@@ -428,10 +435,21 @@ async def main():
         except: 
             continue
             
-    print("🚀 HT USERBOT Hazırdır!")
-    await client.run_until_disconnected()
+    print("✅ HT USERBOT və Köməkçi Bot (Butonlar) hazırdır!")
+    
+    # Hər iki client-in sönməməsi üçün gözləyirik
+    await asyncio.gather(
+        client.run_until_disconnected(),
+        tgbot.run_until_disconnected()
+    )
 
-# Xətanın həlli:
+# Xətanın həlli və Loop idarəsi
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
+    except RuntimeError:
+        # Əgər loop artıq bağlanıbsa, yeni loop yaradırıq
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main())
