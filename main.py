@@ -19,20 +19,19 @@ API_HASH = os.environ.get("API_HASH")
 SESSION = os.environ.get("SESSION_STRING")
 MONGO_URL = os.environ.get("MONGO_URL") # Bunu Heroku Config Vars-a əlavə etməyi unutma!
 
-# ... importlar ...
-
 # MongoDB Bağlantısını Başlat
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
-
-# BURA ƏLAVƏ OLUNDU
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 AFK_REJIM = False
 AFK_SEBEB = ""
 TAG_REJIM = True
 PLUGINS_DIR = "plugins"
 FILTERS = {}
+
+if not os.path.exists(PLUGINS_DIR):
+    os.makedirs(PLUGINS_DIR)
 
 if not os.path.exists(PLUGINS_DIR):
     os.makedirs(PLUGINS_DIR)
