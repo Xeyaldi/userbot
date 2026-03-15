@@ -70,12 +70,18 @@ async def help_menu(client, message):
         await client.send_inline_bot_result(
             message.chat.id, 
             results.query_id, 
-            results.results[0].id,
-            hide_via=True
+            results.results[0].id
+            # hide_via SİLİNDİ (XƏTA BURADA İDİ)
         )
         await message.delete()
     except Exception as e:
-        await message.edit(f"❌ Xəta: {e}")
+        # Əgər inline query hələ aktiv deyilsə, alternativ mesaj
+        await bot.send_message(
+            message.chat.id, 
+            "✨ **HT USERBOT | İdarə Paneli**\n\nKomandalar üçün düyməyə basın:",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")]])
+        )
+        await message.delete()
 
 @bot.on_inline_query()
 async def inline_handler(client, query):
@@ -120,7 +126,7 @@ async def htlive(client, message):
     font_text = f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ [{res.first_name}](tg://user?id={res.id}) ϋçϋи αктινdιя"
     await message.edit(f"🚀 {font_text}")
 
-# --- FİLTER SİSTEMİ (PEER ID DÜZƏLİŞİ İLƏ) ---
+# --- FİLTER SİSTEMİ ---
 @app.on_message(filters.command("filter", prefixes=".") & filters.me)
 async def filter_add(client, message):
     if not message.reply_to_message:
@@ -264,17 +270,15 @@ async def afk_off(client, message):
 async def afk_handler(client, message):
     if AFK_REJIM: await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
 
-# --- DOWNLOADER (PEER ID XƏTASI ÜÇÜN TRY-EXCEPT İLƏ) ---
+# --- DOWNLOADER ---
 @app.on_message(filters.incoming & filters.text & ~filters.me)
 async def dl_handler(client, message):
     if any(x in message.text for x in ["instagram.com", "tiktok.com", "youtube.com"]):
         try:
-            status = await message.reply("📥 Yüklenir...")
             path = f"downloads/{message.id}.mp4"
             with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: 
                 ydl.download([message.text])
             await message.reply_video(path, caption="ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿")
-            await status.delete()
             if os.path.exists(path): os.remove(path)
         except Exception:
             pass 
@@ -313,6 +317,9 @@ async def delete_msg(client, message):
 async def run():
     await app.start()
     await bot.start()
+    # Bazanı tanımaq üçün kiçik dövr (Peer ID xətası üçün vacibdir)
+    async for dialog in app.get_dialogs(limit=5):
+        pass
     print("✅ HT USERBOT ONLINE!")
     await idle()
     await app.stop()
