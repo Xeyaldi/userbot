@@ -7,9 +7,12 @@ import ast
 import sys
 import random
 import wikipedia
-import motor.motor_asyncio  
-from gtts import gTTS       
-from telethon import TelegramClient, events
+import requests
+import yt_dlp
+import motor.motor_asyncio
+from gtts import gTTS
+from bs4 import BeautifulSoup
+from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
 from deep_translator import GoogleTranslator
 
