@@ -424,7 +424,7 @@ async def main():
     await tgbot.start(bot_token=BOT_TOKEN)
     
     # Pluginləri MongoDB-dən yükləyirik
-    async for plugin in plugins_db.find():
+async for plugin in plugins_db.find():
         p_path = os.path.join("plugins", plugin['name'])
         with open(p_path, "wb") as f: 
             f.write(plugin['content'])
