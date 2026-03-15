@@ -31,8 +31,11 @@ plugins_db = db["plugins"]
 # Client-i təyin edirik
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
-# Botu başladan tək və xətasız sətir:
-client.loop.run_until_complete(client.start(bot_token=BOT_TOKEN))
+# Köhnə client.loop sətirlərini sil və bunu yapışdır:
+async def start_bot():
+    await client.start(bot_token=BOT_TOKEN)
+
+client.loop.run_until_complete(start_bot())
 
 # Qlobal dəyişənlər
 AFK_REJIM = False
