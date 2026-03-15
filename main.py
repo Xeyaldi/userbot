@@ -77,7 +77,7 @@ async def help_menu(event):
     # Ana butonlar
     buttons = [
         [Button.inline("🛠 Komandalar", data="view_cmds"), Button.inline("🔌 Pluginlər", data="view_plugs")],
-        [Button.url("📢 Kanal", url="https://t.me/Xeyaldi"), Button.inline("❌ Bağla", data="close_m")]
+        [Button.url("👨‍💻 Developer", url="https://t.me/Kullaniciadidi"), Button.inline("❌ Bağla", data="close_m")]
     ]
     
     await event.delete()
