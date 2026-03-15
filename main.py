@@ -225,6 +225,50 @@ async def tercume_et(event):
         await event.edit(f"🌐 **{secilen_dil.upper()}**:\n{tercume}")
     except: await event.edit("❌ Xəta!")
 
+# --- MƏTNİ SƏSƏ ÇEVİRMƏ (TTS + REPLY DƏSTƏYİ) ---
+@client.on(events.NewMessage(pattern=r'\.ses(?: |$)(.*)'))
+async def text_to_speech(event):
+    if not event.out: return
+    
+    args = event.pattern_match.group(1).strip()
+    text = ""
+
+    # Əgər bir mesaja reply atılıbsa
+    if event.is_reply:
+        reply_msg = await event.get_reply_message()
+        if reply_msg.text:
+            text = reply_msg.text
+    
+    # Əgər komandanın yanında mətn yazılıbsa (bu reply-dan daha öncəliklidir)
+    if args:
+        text = args
+
+    if not text:
+        await event.edit("❌ Səsə çevirmək üçün ya mətn yazın, ya da bir yazıya reply atın!")
+        return
+
+    await event.edit("🎙 **Mətn səsə çevrilir...**")
+    
+    try:
+        # Azərbaycan dilində (az) səs hazırlayır
+        tts = gTTS(text, lang='az') 
+        tts.save("voice.mp3")
+        
+        # Səsli mesaj (voice note) kimi göndərir
+        await client.send_file(
+            event.chat_id, 
+            "voice.mp3", 
+            voice_note=True, 
+            reply_to=event.reply_to_msg_id # Reply atılan mesajı hədəf alır
+        )
+        await event.delete() # ".ses" komandasını silir
+    except Exception as e:
+        await event.edit(f"❌ Xəta baş verdi: `{str(e)}`")
+    finally:
+        if os.path.exists("voice.mp3"):
+            os.remove("voice.mp3")
+            
+
 # --- ƏSAS KOMANDALAR (SƏNİN ORİJİNAL KODUN) ---
 @client.on(events.NewMessage(pattern=r'\.burdasangaga'))
 async def burdasan(event):
