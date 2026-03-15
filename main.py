@@ -12,11 +12,9 @@ import yt_dlp
 import motor.motor_asyncio
 from gtts import gTTS
 from bs4 import BeautifulSoup
-from telethon import TelegramClient, events, Button
+from telethon import TelegramClient, events, Button, functions, types
 from telethon.sessions import StringSession
 from deep_translator import GoogleTranslator
-
-from telethon import functions, types
 
 # Heroku Ayarları
 API_ID = int(os.environ.get("API_ID"))
@@ -25,7 +23,7 @@ SESSION = os.environ.get("SESSION_STRING")
 MONGO_URL = os.environ.get("MONGO_URL") 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# MongoDB Bağlantısını Başlat
+# MongoDB Bağlantısı
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
