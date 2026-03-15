@@ -199,22 +199,72 @@ async def tercume_et(event):
         await event.edit(f"🌐 **Tərcümə:**\n{tercume}")
     except: await event.edit("❌ Xəta!")
 
-@client.on(events.NewMessage(pattern=r'\.ses(?: |$)(.*)'))
-async def text_to_speech(event):
+@client.on(events.NewMessage(pattern=r'\.ses(?:\s+(\w+))?(?:\s+(.*))?'))
+async def intelligent_tts(event):
     if not event.out: return
-    args = event.pattern_match.group(1).strip()
-    text = args if args else (await event.get_reply_message()).text if event.is_reply else ""
-    if not text: return await event.edit("❌ Mətn yazın!")
-    await event.edit("🎙 **Səs hazırlanır...**")
-    try:
-        tts = gTTS(text, lang='az')
-        tts.save("voice.mp3")
-        await client.send_file(event.chat_id, "voice.mp3", voice_note=True, reply_to=event.reply_to_msg_id)
-        await event.delete()
-    except Exception as e: await event.edit(f"❌ Xəta: {e}")
-    finally:
-        if os.path.exists("voice.mp3"): os.remove("voice.mp3")
+    
+    # Komandadan gələn hissələri götürürük
+    arg1 = event.pattern_match.group(1) # Dil kodu ola bilər (ru, eng və s.)
+    arg2 = event.pattern_match.group(2) # Mətn ola bilər
+    
+    target_lang = "tr" # Azərbaycan üçün ən yaxşı seçim
+    text_to_process = ""
 
+    # 1. Mətn və Dil təyini
+    if event.is_reply:
+        reply_msg = await event.get_reply_message()
+        text_to_process = reply_msg.text
+        # Əgər .ses ru yazıb reply atıbsa
+        if arg1 and len(arg1) <= 4: 
+            target_lang = arg1
+    else:
+        # Əgər .ses ru Salam yazılıbsa
+        if arg1 and arg2:
+            target_lang = arg1
+            text_to_process = arg2
+        # Əgər sadəcə .ses Salam yazılıbsa
+        elif arg1:
+            text_to_process = arg1
+
+    if not text_to_process:
+        return await event.edit("❌ **Mətn tapılmadı!** Ya yazı yazın, ya da mesaja reply atın.")
+
+    await event.edit(f"🎙 **Səs hazırlanır...**")
+
+    # Dil Kodları Uyğunlaşdırması
+    lang_map = {
+        "ru": "ru", "eng": "en", "en": "en", "fr": "fr", 
+        "ger": "de", "de": "de", "kore": "ko", "ko": "ko", 
+        "chin": "zh-CN", "tr": "tr", "az": "tr"
+    }
+    
+    final_lang = lang_map.get(target_lang.lower(), "tr")
+
+    try:
+        # Əgər fərqli dil seçilibsə əvvəlcə tərcümə et
+        if final_lang != "tr":
+            translated = GoogleTranslator(source='auto', target=final_lang).translate(text_to_process)
+            text_to_process = translated
+
+        # Səsi yarat (Qadın səsi - Pulsuz)
+        tts = gTTS(text=text_to_process, lang=final_lang)
+        tts.save("voice.mp3")
+
+        # Səsi göndər və orijinal mesajı sil
+        await client.send_file(
+            event.chat_id, 
+            "voice.mp3", 
+            voice_note=True, 
+            reply_to=event.reply_to_msg_id
+        )
+        await event.delete()
+        
+    except Exception as e:
+        await event.edit(f"❌ **Xəta:** {e}")
+    finally:
+        if os.path.exists("voice.mp3"):
+            os.remove("voice.mp3")
+            
 @client.on(events.NewMessage(pattern=r'\.afk ?(.*)'))
 async def afk_aktiv(event):
     global AFK_REJIM, AFK_SEBEB
