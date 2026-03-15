@@ -6,14 +6,14 @@ import wikipedia
 import requests
 import yt_dlp
 import motor.motor_asyncio
-from pyrogram import Client, filters, enums
+from pyrogram import Client, filters, enums, idle
 from pyrogram.types import (
     InlineKeyboardMarkup, 
     InlineKeyboardButton, 
     InlineQueryResultArticle, 
     InputTextMessageContent
 )
-from pyrogram.errors import FloodWait
+from pyrogram.errors import FloodWait, PeerIdInvalid
 from deep_translator import GoogleTranslator
 from gtts import gTTS
 
@@ -62,7 +62,7 @@ COMMAND_DETAILS = {
     "kick": "👞 **Kick:** İstifadəçini qrupdan atır."
 }
 
-# --- YARDIM MENYUSU (.hthelp) ---
+# --- YARDIM MENYUSU ---
 @app.on_message(filters.command("hthelp", prefixes=".") & filters.me)
 async def help_menu(client, message):
     try:
@@ -120,30 +120,33 @@ async def htlive(client, message):
     font_text = f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ [{res.first_name}](tg://user?id={res.id}) ϋçϋи αктινdιя"
     await message.edit(f"🚀 {font_text}")
 
-# --- FİLTER SİSTEMİ ---
+# --- FİLTER SİSTEMİ (PEER ID DÜZƏLİŞİ İLƏ) ---
 @app.on_message(filters.command("filter", prefixes=".") & filters.me)
 async def filter_add(client, message):
     if not message.reply_to_message:
         return await message.edit("❌ Filter üçün bir mesaja reply at gaga!")
     keyword = message.text.split(None, 1)[1].lower()
-    FILTERS[message.chat.id] = FILTERS.get(message.chat.id, {})
-    FILTERS[message.chat.id][keyword] = message.reply_to_message.id
+    chat_id = message.chat.id
+    if chat_id not in FILTERS: FILTERS[chat_id] = {}
+    FILTERS[chat_id][keyword] = message.reply_to_message.id
     await message.edit(f"✅ `{keyword}` filteri aktiv edildi!")
 
 @app.on_message(filters.command("stopfilter", prefixes=".") & filters.me)
 async def filter_stop(client, message):
+    if len(message.command) < 2: return
     keyword = message.text.split(None, 1)[1].lower()
     if message.chat.id in FILTERS and keyword in FILTERS[message.chat.id]:
         del FILTERS[message.chat.id][keyword]
         await message.edit(f"🗑 `{keyword}` filteri silindi.")
     else: await message.edit("❌ Tapılmadı.")
 
-@app.on_message(filters.incoming & filters.text & ~filters.private)
+@app.on_message(filters.incoming & filters.text & ~filters.me)
 async def filter_handler(client, message):
-    if message.chat.id in FILTERS:
+    chat_id = message.chat.id
+    if chat_id in FILTERS:
         word = message.text.lower()
-        if word in FILTERS[message.chat.id]:
-            await message.reply_reply_to_message(FILTERS[message.chat.id][word])
+        if word in FILTERS[chat_id]:
+            await message.reply_to_message(FILTERS[chat_id][word])
 
 # --- PİNG VƏ ID ---
 @app.on_message(filters.command("ping", prefixes=".") & filters.me)
@@ -173,11 +176,14 @@ async def tagall(client, message):
     TAG_REJIM = True
     sebeb = message.text.split(None, 1)[1] if len(message.command) > 1 else ""
     await message.delete()
-    async for member in client.get_chat_members(message.chat.id):
-        if not TAG_REJIM: break
-        if not member.user.is_bot:
-            await client.send_message(message.chat.id, f"[{member.user.first_name}](tg://user?id={member.user.id}) {sebeb}")
-            await asyncio.sleep(1.5)
+    try:
+        async for member in client.get_chat_members(message.chat.id):
+            if not TAG_REJIM: break
+            if not member.user.is_bot:
+                await client.send_message(message.chat.id, f"[{member.user.first_name}](tg://user?id={member.user.id}) {sebeb}")
+                await asyncio.sleep(1.5)
+    except FloodWait as e:
+        await asyncio.sleep(e.value)
 
 @app.on_message(filters.command("stoptag", prefixes=".") & filters.me)
 async def stoptag(client, message):
@@ -188,11 +194,13 @@ async def stoptag(client, message):
 # --- HAVA VƏ WİKİ ---
 @app.on_message(filters.command("hava", prefixes=".") & filters.me)
 async def hava(client, message):
+    if len(message.command) < 2: return
     city = message.text.split(None, 1)[1]
     await message.edit(f"🌡 **Şəhər:** `{city}` üçün hava axtarılır...")
 
 @app.on_message(filters.command("wiki", prefixes=".") & filters.me)
 async def wiki(client, message):
+    if len(message.command) < 2: return
     query = message.text.split(None, 1)[1]
     try:
         wikipedia.set_lang("az")
@@ -216,6 +224,7 @@ async def dice(client, message):
 # --- YAZI, TƏRCÜMƏ, SƏS ---
 @app.on_message(filters.command("yazi", prefixes=".") & filters.me)
 async def yazi(client, message):
+    if len(message.command) < 2: return
     metn = message.text.split(None, 1)[1]
     font = metn.replace('a', 'α').replace('e', 'є').replace('i', 'ι')
     await message.edit(f"✨ {font}")
@@ -229,7 +238,8 @@ async def tercume(client, message):
 
 @app.on_message(filters.command("ses", prefixes=".") & filters.me)
 async def ses(client, message):
-    text = message.reply_to_message.text if message.reply_to_message else message.text.split(None, 1)[1]
+    text = message.reply_to_message.text if message.reply_to_message else (message.text.split(None, 1)[1] if len(message.command) > 1 else None)
+    if not text: return await message.edit("❌ Mətn yoxdur.")
     await message.edit("🎙 Hazırlanır...")
     tts = gTTS(text=text, lang="tr")
     tts.save("voice.mp3")
@@ -250,22 +260,24 @@ async def afk_off(client, message):
     AFK_REJIM = False
     await message.edit("✅ Onlaynam!")
 
-@app.on_message(filters.incoming & filters.private)
+@app.on_message(filters.incoming & filters.private & ~filters.me)
 async def afk_handler(client, message):
     if AFK_REJIM: await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
 
-# --- DOWNLOADER ---
-@app.on_message(filters.incoming & ~filters.private)
+# --- DOWNLOADER (PEER ID XƏTASI ÜÇÜN TRY-EXCEPT İLƏ) ---
+@app.on_message(filters.incoming & filters.text & ~filters.me)
 async def dl_handler(client, message):
-    if message.text and any(x in message.text for x in ["instagram.com", "tiktok.com", "youtube.com"]):
-        status = await message.reply("📥 Yüklenir...")
-        path = f"downloads/{message.id}.mp4"
+    if any(x in message.text for x in ["instagram.com", "tiktok.com", "youtube.com"]):
         try:
-            with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: ydl.download([message.text])
+            status = await message.reply("📥 Yüklenir...")
+            path = f"downloads/{message.id}.mp4"
+            with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: 
+                ydl.download([message.text])
             await message.reply_video(path, caption="ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿")
             await status.delete()
-        except: await status.edit("❌ Xəta.")
-        if os.path.exists(path): os.remove(path)
+            if os.path.exists(path): os.remove(path)
+        except Exception:
+            pass 
 
 # --- ADMIN ---
 @app.on_message(filters.command("ban", prefixes=".") & filters.me)
@@ -288,8 +300,8 @@ async def saat(client, message):
 
 @app.on_message(filters.command("ters", prefixes=".") & filters.me)
 async def ters(client, message):
-    text = message.reply_to_message.text if message.reply_to_message else message.text.split(None, 1)[1]
-    await message.edit(text[::-1])
+    text = message.reply_to_message.text if message.reply_to_message else (message.text.split(None, 1)[1] if len(message.command) > 1 else None)
+    if text: await message.edit(text[::-1])
 
 @app.on_message(filters.command("del", prefixes=".") & filters.me)
 async def delete_msg(client, message):
@@ -297,23 +309,15 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
-# --- MAIN RUN (XƏTA DÜZƏLDİLDİ) ---
-from pyrogram import idle
-
+# --- MAIN RUN ---
 async def run():
     await app.start()
     await bot.start()
-    
-    # Botun adını loqda görmək üçün (istəyə bağlı)
-    me = await app.get_me()
-    print(f"✅ {me.first_name} USERBOT ONLINE!")
-    
-    # 'run_until_disconnected' yerinə Pyrogram-ın 'idle' funksiyası
+    print("✅ HT USERBOT ONLINE!")
     await idle()
-    
-    # Bot dayandıqda client-ləri təhlükəsiz bağlamaq üçün
     await app.stop()
     await bot.stop()
 
 if __name__ == "__main__":
+    if not os.path.exists("downloads"): os.makedirs("downloads")
     asyncio.get_event_loop().run_until_complete(run())
