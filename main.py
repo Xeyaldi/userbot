@@ -33,7 +33,7 @@ client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
 # SƏHV BURADA İDİ - BU 3 SƏTİR HƏR ŞEYİ DÜZƏLDİR:
 if not client.is_connected():
-    client.loop.run_until_complete(client.start(bot_token=BOT_TOKEN))
+client.loop.run_until_complete(client.start(bot_token=BOT_TOKEN))
 # Qlobal dəyişənlər
 AFK_REJIM = False
 AFK_SEBEB = ""
