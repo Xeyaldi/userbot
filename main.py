@@ -7,6 +7,7 @@ import requests
 import yt_dlp
 import motor.motor_asyncio
 import importlib.util
+import sys
 from pyrogram import Client, filters, enums, idle
 from pyrogram.types import (
     InlineKeyboardMarkup, 
@@ -24,6 +25,11 @@ API_HASH = os.environ.get("API_HASH")
 SESSION = os.environ.get("SESSION_STRING")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 MONGO_URL = os.environ.get("MONGO_URL")
+
+# Dizayn Ayarları
+HELP_IMG = "https://files.catbox.moe/34xlvu.jpg" 
+KANAL_URL = "https://t.me/ht_bots"
+KANAL_USER = "@ht_bots"
 
 # MongoDB Bağlantısı
 mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
@@ -64,7 +70,19 @@ COMMAND_DETAILS = {
     "pluginyukle": "🔌 Yeni modul (.py) əlavə edir."
 }
 
-# --- PLUGİN YÜKLƏMƏ SİSTEMİ ---
+# --- DİNAMİK PLUGİN YÜKLƏYİCİ (ANINDA AKTİV EDİR) ---
+async def load_plugin_dynamically(name, path):
+    try:
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        sys.modules[name] = module
+        print(f"✨ Modul sistemə daxil edildi: {name}")
+        return True
+    except Exception as e:
+        print(f"❌ Modul yüklənmə xətası: {e}")
+        return False
+
 @app.on_message(filters.command("pluginyukle", prefixes=".") & filters.me)
 async def install_plugin(client, message):
     if not message.reply_to_message or not message.reply_to_message.document:
@@ -74,7 +92,7 @@ async def install_plugin(client, message):
     if not doc.file_name.endswith(".py"):
         return await message.edit("❌ Sadece `.py` faylları yüklənə bilər.")
 
-    await message.edit("📥 Modul yüklənir...")
+    await message.edit("📥 **Modul bazaya yazılır və aktivləşdirilir...**")
     if not os.path.exists("plugins"): os.makedirs("plugins")
     loc = os.path.join("plugins", doc.file_name)
     await client.download_media(message.reply_to_message, file_name=loc)
@@ -83,7 +101,13 @@ async def install_plugin(client, message):
         code = f.read()
     await plugins_db.update_one({"name": doc.file_name}, {"$set": {"code": code}}, upsert=True)
     
-    await message.edit(f"✅ `{doc.file_name}` uğurla quraşdırıldı və bazaya yazıldı!")
+    # Anında modulu işə sal
+    success = await load_plugin_dynamically(doc.file_name.replace(".py", ""), loc)
+    
+    if success:
+        await message.edit(f"✅ **Uğurlu!**\n📦 Modul: `{doc.file_name}`\n🚀 Status: **Aktivdir**\n\n_Botu restart etməyə ehtiyac yoxdur._")
+    else:
+        await message.edit(f"⚠️ Modul bazaya yazıldı, lakin işə salınarkən xəta baş verdi. Loglara baxın.")
 
 # --- YARDIM MENYUSU ---
 @app.on_message(filters.command("hthelp", prefixes=".") & filters.me)
@@ -93,12 +117,15 @@ async def help_menu(client, message):
         await client.send_inline_bot_result(message.chat.id, results.query_id, results.results[0].id)
         await message.delete()
     except Exception:
-        help_text = "✨ **HT USERBOT | Komandalar Menyusu**\n\n"
+        # İNLİNE OLMAYAN YERLƏRDƏ GÖZƏL YAZI MENYUSU
+        help_text = f"┏━━━━━━━━━━━━━━┓\n  ✨ **HT USERBOT | MENU**\n┗━━━━━━━━━━━━━━┛\n\n"
         for cmd, desc in COMMAND_DETAILS.items():
-            help_text += f"🔹 `.{cmd}` : {desc}\n"
+            help_text += f"▪️ `.{cmd}` : {desc}\n"
+        
+        help_text += f"\n📢 **Kanal:** {KANAL_USER}"
         
         await message.edit(help_text, reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 Kanal", url="https://t.me/Kullaniciadidi")]
+            [InlineKeyboardButton("🛡 HT Bots Support", url=KANAL_URL)]
         ]))
 
 @bot.on_inline_query()
@@ -106,12 +133,16 @@ async def inline_handler(client, query):
     if query.query == "menu":
         buttons = [
             [InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")],
-            [InlineKeyboardButton("📢 HT Kanal", url="https://t.me/Kullaniciadidi"), InlineKeyboardButton("❌ Bağla", callback_data="close_m")]
+            [InlineKeyboardButton("📢 HT Kanal", url=KANAL_URL), InlineKeyboardButton("❌ Bağla", callback_data="close_m")]
         ]
         await query.answer([
             InlineQueryResultArticle(
-                title="HT Menu",
-                input_message_content=InputTextMessageContent("✨ **HT USERBOT | İdarə Paneli**\n\nSistem aktivdir."),
+                title="HT Userbot Menu",
+                description="İdarəetmə Paneli",
+                thumb_url=HELP_IMG,
+                input_message_content=InputTextMessageContent(
+                    f"✨ **HT USERBOT | İdarə Paneli**\n\n👤 **İstifadəçi:** {app.me.first_name}\n🛡 **Sistem:** Aktiv\n📢 **Rəsmi Kanal:** {KANAL_USER}\n\n_Aşağıdakı düymələrlə komandalara baxa bilərsiniz._"
+                ),
                 reply_markup=InlineKeyboardMarkup(buttons)
             )
         ], cache_time=1)
@@ -127,13 +158,13 @@ async def callback_handler(client, callback_query):
             if i + 1 < len(keys): row.append(InlineKeyboardButton(f"🔹 {keys[i+1]}", callback_data=f"info_{keys[i+1]}"))
             cmd_buttons.append(row)
         cmd_buttons.append([InlineKeyboardButton("⬅️ Geri", callback_data="back")])
-        await callback_query.edit_message_text("🛠 **Sistem Komandaları:**", reply_markup=InlineKeyboardMarkup(cmd_buttons))
+        await callback_query.edit_message_text("🛠 **HT USERBOT Komandaları:**", reply_markup=InlineKeyboardMarkup(cmd_buttons))
     elif data.startswith("info_"):
         cmd = data.split("_")[1]
         desc = COMMAND_DETAILS.get(cmd, "Məlumat yoxdur.")
-        await callback_query.edit_message_text(f"🔍 **Komanda:** `.{cmd}`\n\n{desc}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Geri", callback_data="view_cmds")]]))
+        await callback_query.edit_message_text(f"🔍 **Komanda:** `.{cmd}`\n\n{desc}\n\n🛡 {KANAL_USER}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Geri", callback_data="view_cmds")]]))
     elif data == "back":
-        await callback_query.edit_message_text("✨ **HT USERBOT | İdarə Paneli**", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")]]))
+        await callback_query.edit_message_text(f"✨ **HT USERBOT | İdarə Paneli**\n\n📢 Kanal: {KANAL_USER}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")]]))
     elif data == "close_m":
         await callback_query.message.delete()
 
@@ -296,7 +327,7 @@ async def dl_handler(client, message):
             path = f"downloads/{message.id}.mp4"
             with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: 
                 ydl.download([message.text])
-            await message.reply_video(path, caption="ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿")
+            await message.reply_video(path, caption=f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿\n{KANAL_USER}")
             if os.path.exists(path): os.remove(path)
         except Exception:
             pass 
@@ -331,20 +362,17 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
-# --- MODULLARI BAZADAN YÜKLƏMƏ (DÜZƏLDİLMİŞ) ---
+# --- MODULLARI BAZADAN YÜKLƏMƏ VƏ AKTİVLƏŞDİRMƏ ---
 async def load_stored_plugins():
-    if not os.path.exists("plugins"): 
-        os.makedirs("plugins")
-    
+    if not os.path.exists("plugins"): os.makedirs("plugins")
     async for plugin in plugins_db.find():
         name = plugin.get("name")
-        code = plugin.get("code") # get() istifadə etdik ki, KeyError verməsin
-        
+        code = plugin.get("code")
         if name and code:
             path = os.path.join("plugins", name)
             with open(path, "w") as f:
                 f.write(code)
-            print(f"📦 Modul yükləndi: {name}")
+            await load_plugin_dynamically(name.replace(".py", ""), path)
 
 # --- MAIN RUN ---
 async def run():
@@ -353,7 +381,7 @@ async def run():
     await bot.start()
     async for dialog in app.get_dialogs(limit=5):
         pass
-    print("✅ HT USERBOT ONLINE!")
+    print(f"✅ HT USERBOT ONLINE! Kanal: {KANAL_USER}")
     await idle()
     await app.stop()
     await bot.stop()
