@@ -44,7 +44,7 @@ BOT_USERNAME = ""
 if not os.path.exists(PLUGINS_DIR):
     os.makedirs(PLUGINS_DIR)
 
-# --- KOMANDA İZAHLARI (SİLMƏDİM) ---
+# --- KOMANDA İZAHLARI ---
 COMMAND_DETAILS = {
     "ping": "🚀 **Ping:** Botun cavab sürətini ölçür.",
     "id": "🆔 **ID:** İstifadəçinin və ya reply atılan şəxsin ID-sini göstərir.",
@@ -68,7 +68,7 @@ COMMAND_DETAILS = {
     "kick": "👞 **Kick:** İstifadəçini qrupdan atır."
 }
 
-# --- MÖHTƏŞƏM ASENA MENYUSU (VİA BOT YAZISI OLMADAN) ---
+# --- MENYU (DÜZƏLDİLMİŞ HİSSƏ) ---
 @client.on(events.NewMessage(pattern=r'\.hthelp'))
 async def help_menu(event):
     if not event.out: return
@@ -76,17 +76,17 @@ async def help_menu(event):
         me_bot = await tgbot.get_me()
         results = await client.inline_query(me_bot.username, "menu")
         
-        # BU HİSSƏ "VİA" YAZISINI KÖKÜNDƏN SİLİR:
+        # 'InlineResult' xətası burada results.results[0].id ilə həll olundu
         await client(functions.messages.SendInlineBotResultRequest(
             peer=event.chat_id,
             query_id=results.query_id,
-            id=results[0].id,
+            id=results.results[0].id,
             reply_to_msg_id=event.reply_to_msg_id,
             hide_via=True
         ))
         await event.delete()
     except Exception as e:
-        await event.edit(f"❌ Menyu xətası: {e}")
+        await event.edit(f"❌ Xəta: {e}")
 
 @tgbot.on(events.InlineQuery())
 async def inline_handler(event):
@@ -101,7 +101,7 @@ async def inline_handler(event):
             [Button.inline("🛠 Komandalar", data="view_cmds"), Button.inline("🔌 Pluginlər", data="view_plugs")],
             [Button.url("📢 HT Kanal", url="https://t.me/Kullaniciadidi"), Button.inline("❌ Bağla", data="close_m")]
         ]
-        res = builder.article(title="HT Menu", text="✨ **HT USERBOT | İdarə Paneli**\n\nSistem aktivdir. Aşağıdakı bölmələri seçin:", buttons=buttons)
+        res = builder.article(title="HT Menu", text="✨ **HT USERBOT | İdarə Paneli**\n\nSistem aktivdir.", buttons=buttons)
         await event.answer([res])
 
 @tgbot.on(events.CallbackQuery())
@@ -144,7 +144,7 @@ async def callback_handler(event):
         ])
     elif data == "close_m": await event.delete()
 
-# --- SƏNİN DİGƏR BÜTÜN FUNKSİYALARIN (BURDAN AŞAĞIYA TOXUNMADIM) ---
+# --- BURADAN AŞAĞIYA HƏR ŞEY SƏNİN ORİJİNAL KODUNDUR ---
 
 @client.on(events.NewMessage(pattern=r'\.htlive'))
 async def htlive(event):
