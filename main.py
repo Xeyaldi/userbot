@@ -397,12 +397,12 @@ async def mesaj_sil(event):
         await event.delete()
 
 async def main():
-    # Butonların və callback-lərin işləməsi üçün mütləq bot_token ilə başlayır
+    # Botu başladırıq
     await client.start(bot_token=BOT_TOKEN)
     
-    # Pluginləri bazadan çəkib yükləyən hissə
+    # Pluginləri yükləyirik
     async for plugin in plugins_db.find():
-        p_path = os.path.join("plugins", plugin['name']) # PLUGINS_DIR yerinə "plugins" yazıldı
+        p_path = os.path.join("plugins", plugin['name'])
         with open(p_path, "wb") as f: 
             f.write(plugin['content'])
         try:
@@ -412,13 +412,10 @@ async def main():
         except: 
             continue
             
-    print("🚀 HT USERBOT Hazırdır və Butonlar Aktivdir!")
+    print("🚀 HT USERBOT Hazırdır!")
     await client.run_until_disconnected()
 
+# Xətanın həlli:
 if __name__ == '__main__':
-    # Logdakı "Event loop is closed" xətasını bu hissə tamamilə həll edir
-    try:
-        asyncio.run(main())
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
