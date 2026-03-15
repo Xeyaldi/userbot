@@ -73,10 +73,11 @@ COMMAND_DETAILS = {
 async def help_menu(event):
     if not event.out: return
     try:
-        me_bot = await tgbot.get_me()
-        # Userbot arxa fonda botun inline funksiyasını çağırır
-        results = await client.inline_query(me_bot.username, "menu")
-        # XƏTA BURADA İDİ: results[0].click istifadə edərək mesajı sənin adından "via-sız" atırıq
+        # Loqdakı xətanı burada düzəltdim: 'bot_me' alaraq username-i götürürük
+        bot_me = await tgbot.get_me()
+        results = await client.inline_query(bot_me.username, "menu")
+        
+        # .click() metodu mesajı sənin adından göndərir və "via bot" yazısını yox edir
         await results[0].click(event.chat_id, reply_to=event.reply_to_msg_id, hide_via=True)
         await event.delete()
     except Exception as e:
@@ -226,7 +227,6 @@ async def stop_tag(event):
 async def hava_durumu(event):
     if event.out: await event.edit(f"🌡 **Şəhər:** `{event.pattern_match.group(1)}` üçün hava məlumatı axtarılır...")
 
-# --- DUZELTILMIS WIKI ---
 @client.on(events.NewMessage(pattern=r'\.wiki (.*)'))
 async def wikipedia_search(event):
     if not event.out: return
@@ -307,7 +307,6 @@ async def afk_deaktiv(event):
         AFK_REJIM = False
         await event.edit("✅ AFK söndürüldü.")
 
-# --- AUTO DOWNLOADER (ORİJİNAL) ---
 @client.on(events.NewMessage(incoming=True))
 async def auto_downloader(event):
     text = event.text
@@ -323,7 +322,6 @@ async def auto_downloader(event):
     finally:
         if os.path.exists(file_path): os.remove(file_path)
 
-# --- YENİ ADMİN PLUGİNLƏRİ (DEDİYİN KİMİ 2 DƏNƏ) ---
 @client.on(events.NewMessage(pattern=r'\.ban'))
 async def ban_user(event):
     if not event.out or not event.is_group: return
