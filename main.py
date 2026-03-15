@@ -28,22 +28,26 @@ mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
 
-# 1. Userbot üçün (Sənin hesabın)
+# 1. (Userbot)
 client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
 
-# 2. Butonlar üçün (Köməkçi Bot)
-tgbot = TelegramClient("bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+# 2. Butonlar üçün rəsmi Bot (tgbot)
+# .start() burada birbaşa çağırılır ki, paralel işləsinlər
+tgbot = TelegramClient("bot_session", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
-async def start_bot():
+async def start_everything():
+    # Userbotu başladırıq
     await client.connect()
     if not await client.is_user_authorized():
         await client.start()
     
-    # Botun özünü də başladırıq (Butonlar üçün)
+    # Köməkçi botu başladırıq
     await tgbot.start()
-    print("✅ Userbot və Köməkçi Bot aktivdir!")
+    print("✅ HƏR İKİSİ AKTİVDİR: Userbot və Köməkçi Bot!")
 
-client.loop.run_until_complete(start_bot())
+# Hər iki client-i eyni loop-da başladırıq
+client.loop.run_until_complete(start_everything())
+
 
 # --- BUNDAN SONRA SƏNİN DİGƏR KOMANDALARIN GƏLİR ---
 # BUNDAN AŞAĞIYA ÖZ KOMANDALARINI VƏ PLUGİNLƏRİNİ YAPIŞDIRA BİLƏRSƏN
