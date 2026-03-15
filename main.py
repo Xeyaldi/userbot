@@ -45,7 +45,7 @@ BOT_USERNAME = "" # Avtomatik dolacaq
 if not os.path.exists(PLUGINS_DIR):
     os.makedirs(PLUGINS_DIR)
 
-# --- KOMANDA İZAHLARI (Buna toxunmadım) ---
+# --- TAM BUTONLU VƏ İZAHLI MENYU SİSTEMİ ---
 COMMAND_DETAILS = {
     "ping": "🚀 **Ping:** Botun cavab sürətini ölçür.",
     "id": "🆔 **ID:** İstifadəçinin və ya reply atılan şəxsin ID-sini göstərir.",
@@ -67,14 +67,17 @@ COMMAND_DETAILS = {
     "pluginyukle": "🔌 **Plugin:** Yeni plugin əlavə edir."
 }
 
-# --- ASENA ÜSULU INLINE HELP (DEYİLDİYİ KİMİ) ---
+# --- ASENA ÜSULU INLINE HELP ---
 @client.on(events.NewMessage(pattern=r'\.hthelp'))
 async def help_menu(event):
     if not event.out: return
-    # Inline Query vasitəsilə mesajı userbot adına göndəririk
-    results = await client.inline_query(BOT_USERNAME, "menu")
-    await results[0].click(event.chat_id, reply_to=event.reply_to_msg_id)
-    await event.delete()
+    try:
+        # Userbot botu inline olaraq çağırır - düymələr sənin adından gedir
+        results = await client.inline_query(BOT_USERNAME, "menu")
+        await results[0].click(event.chat_id, reply_to=event.reply_to_msg_id)
+        await event.delete()
+    except Exception as e:
+        await event.edit(f"❌ **Xəta:** {e}\nZəhmət olmasa @BotFather-dən Inline Mode-u aktiv edin.")
 
 @tgbot.on(events.InlineQuery())
 async def inline_handler(event):
@@ -132,7 +135,7 @@ async def callback_handler(event):
         ])
     elif data == "close_m": await event.delete()
 
-# --- SƏNİN ORİJİNAL KOMANDALARIN (HEÇ NƏ SİLİNMƏYİB) ---
+# --- DIGER BUTUN ORİJİNAL KOMANDALAR ---
 
 @client.on(events.NewMessage(pattern=r'\.htlive'))
 async def htlive(event):
@@ -145,7 +148,7 @@ async def htlive(event):
 async def filter_add(event):
     if not event.out: return
     if not event.is_reply:
-        await event.edit("❌ Filter üçün bir mesaja reply at!")
+        await event.edit("❌ Filter üçün bir mesaja reply at gaga!")
         return
     keyword = event.pattern_match.group(1).lower()
     reply_msg = await event.get_reply_message()
@@ -220,12 +223,12 @@ async def stop_tag(event):
 async def hava_durumu(event):
     if event.out: await event.edit(f"🌡 **Şəhər:** `{event.pattern_match.group(1)}` üçün hava məlumatı axtarılır...")
 
-# --- DUZELTILMIS WIKI (SİLİNMƏDİ, STABİLLƏŞDİ) ---
+# --- DUZELTILMIS WIKI ---
 @client.on(events.NewMessage(pattern=r'\.wiki (.*)'))
 async def wikipedia_search(event):
     if not event.out: return
     query = event.pattern_match.group(1)
-    await event.edit("🔍 **Wikipedia axtarılır...**")
+    await event.edit("🔍 **Axtarılır...**")
     try:
         wikipedia.set_lang("az")
         summary = wikipedia.summary(query, sentences=3)
@@ -275,7 +278,7 @@ async def intelligent_tts(event):
     else:
         if arg1 and arg2: target_lang, text_to_process = arg1, arg2
         elif arg1: text_to_process = arg1
-    if not text_to_process: return await event.edit("❌ Mətn yoxdur.")
+    if not text_to_process: return await event.edit("❌ Mətn tapılmadı.")
     await event.edit("🎙 Hazırlanır...")
     try:
         tts = gTTS(text=text_to_process, lang="tr")
@@ -303,6 +306,22 @@ async def afk_deaktiv(event):
         AFK_REJIM = False
         await event.edit("✅ AFK söndürüldü.")
 
+# --- AUTO DOWNLOADER (ORİJİNAL) ---
+@client.on(events.NewMessage(incoming=True))
+async def auto_downloader(event):
+    text = event.text
+    if not text or not any(site in text for site in ["instagram.com", "tiktok.com", "youtube.com"]): return
+    status_msg = await event.reply("📥 Yüklenir...")
+    if not os.path.exists("downloads"): os.makedirs("downloads")
+    file_path = f'downloads/{event.id}.mp4'
+    try:
+        with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': file_path, 'quiet': True}) as ydl: ydl.download([text])
+        await event.reply("ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿", file=file_path)
+        await status_msg.delete()
+    except: await status_msg.edit("❌ Xəta.")
+    finally:
+        if os.path.exists(file_path): os.remove(file_path)
+
 @client.on(events.NewMessage(pattern=r'\.saat'))
 async def canli_saat(event):
     if event.out:
@@ -323,19 +342,6 @@ async def mesaj_sil(event):
         await (await event.get_reply_message()).delete()
         await event.delete()
 
-# --- AUTO DOWNLOADER (OLDUĞU KİMİ QALDI) ---
-@client.on(events.NewMessage(incoming=True))
-async def auto_downloader(event):
-    link = event.text
-    if "youtube.com" in link or "youtu.be" in link or "instagram.com" in link:
-        try:
-            ydl_opts = {'format': 'best', 'outtmpl': 'video.mp4'}
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([link])
-            await client.send_file(event.chat_id, "video.mp4")
-            os.remove("video.mp4")
-        except: pass
-
 @client.on(events.NewMessage(pattern=r'\.pluginyukle'))
 async def plugin_yukle(event):
     if not event.out or not event.is_reply: return
@@ -349,7 +355,7 @@ async def plugin_yukle(event):
         await event.edit(f"✅ {p_name} yükləndi!")
         os.execl(sys.executable, sys.executable, *sys.argv)
 
-# --- LOG QRUPU (BOT YALNIZ BURADA ADMIN OLACAQ) ---
+# --- LOG QRUPU VƏ YETKİ ---
 async def setup_log_group():
     log_cfg = await config_db.find_one({"type": "log_group"})
     if log_cfg: return log_cfg["chat_id"]
@@ -364,11 +370,15 @@ async def setup_log_group():
         return log_id
     except: return None
 
+# --- MAIN ---
 async def main():
     global BOT_USERNAME
     await client.start()
     bot_me = await tgbot.start(bot_token=BOT_TOKEN)
+    
+    # Xətanın həlli: bot_me artıq User obyektidir
     BOT_USERNAME = bot_me.username 
+    
     await setup_log_group()
     
     async for p in plugins_db.find():
