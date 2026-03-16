@@ -218,6 +218,8 @@ async def inline_handler(client, query):
 
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
+    if callback_query.from_user.id != app.me.id:
+        return await callback_query.answer("⚠️ Bu menyu yalnız bot sahibinə məxsusdur!", show_alert=True)      
     data = callback_query.data
     main_text = f"[\u200b]({HELP_IMG})✨ **HT USERBOT | İdarə Paneli**\n\n👤 **İstifadəçi:** {app.me.first_name}\n🛡 **Sistem:** Aktiv\n📢 **Kanal:** {KANAL_USER}\n\n_Komandalar üçün aşağıdakı düyməyə vurun._"
     main_buttons = [
