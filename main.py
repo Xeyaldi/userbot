@@ -15,7 +15,7 @@ from pyrogram.types import (
     InlineQueryResultArticle, 
     InputTextMessageContent
 )
-from pyrogram.errors import FloodWait, PeerIdInvalid
+from pyrogram.errors import FloodWait, PeerIdInvalid, RPCError
 from deep_translator import GoogleTranslator
 from gtts import gTTS
 
@@ -69,6 +69,44 @@ COMMAND_DETAILS = {
     "kick": "👞 İstifadəçini qrupdan atır.",
     "pluginyukle": "🔌 Yeni modul (.py) əlavə edir."
 }
+
+# --- YENİ: AVTOMATİK PROFİL VƏ LOG SİSTEMİ ---
+async def setup_account_automatically():
+    try:
+        me = await app.get_me()
+        
+        # 1. Bioqrafiya Yeniləmə (Avtomatik sənin nickinə və rəsmi kanala uyğun)
+        new_bio = f"🛡 HT Userbot User: {me.first_name} | 📢 Kanal: {KANAL_USER} | 🚀 Sistem: Aktiv"
+        try:
+            await app.update_profile(bio=new_bio)
+        except: pass
+
+        # 2. Avtomatik Log Qrupu Yaratma
+        settings = await db.settings.find_one({"type": "log_group"})
+        if not settings:
+            try:
+                group_name = f"HT LOGS | {me.first_name}"
+                group_desc = f"Bu qrup {me.first_name} üçün HT Userbot tərəfindən avtomatik yaradılmışdır.\nKanal: {KANAL_USER}"
+                new_group = await app.create_supergroup(group_name, group_desc)
+                
+                await db.settings.update_one(
+                    {"type": "log_group"}, 
+                    {"$set": {"group_id": new_group.id}}, 
+                    upsert=True
+                )
+                
+                await app.send_message(
+                    "me", 
+                    f"✅ **HT USERBOT | AVTO SETUP**\n\n"
+                    f"🚀 Sizin üçün rəsmi Log qrupu yaradıldı.\n"
+                    f"🆔 **ID:** `{new_group.id}`\n"
+                    f"👤 **Sahib:** {me.first_name}\n"
+                    f"📁 **Məlumat:** Bioqrafiyanız rəsmi kanala uyğun yeniləndi."
+                )
+            except Exception as e:
+                print(f"Log qrupu xətası: {e}")
+    except Exception as e:
+        print(f"Auto-setup xətası: {e}")
 
 # --- DİNAMİK PLUGİN YÜKLƏYİCİ ---
 async def load_plugin_dynamically(name, path):
@@ -281,10 +319,8 @@ async def tercume(client, message):
     res = GoogleTranslator(source='auto', target=lang).translate(message.reply_to_message.text)
     await message.edit(f"🌐 **Tərcümə:**\n{res}")
 
-# --- YENİLƏNMİŞ SES KOMANDASI ---
 @app.on_message(filters.command("ses", prefixes=".") & filters.me)
 async def ses(client, message):
-    # Əgər yanına söz yazılıbsa və ya reply atılıbsa
     text = ""
     if len(message.command) > 1:
         text = message.text.split(None, 1)[1]
@@ -297,17 +333,14 @@ async def ses(client, message):
     await message.edit("🎙 **Səs emal olunur...**")
     
     try:
-        # Səsi yaradırıq
         tts = gTTS(text=text, lang="tr")
         tts.save("voice.mp3")
-        
-        # Səsi göndəririk (Reply silinmədən)
         await client.send_voice(
             chat_id=message.chat.id, 
             voice="voice.mp3",
             reply_to_message_id=message.reply_to_message.id if message.reply_to_message else None
         )
-        await message.delete() # Sadece komanda mesajını silirik
+        await message.delete() 
     except Exception as e:
         await message.edit(f"❌ Xəta: {e}")
     finally:
@@ -376,13 +409,16 @@ async def load_stored_plugins():
         name, code = plugin.get("name"), plugin.get("code")
         if name and code:
             path = os.path.join("plugins", name)
-            # Kodları təkrar yazırıq
             with open(path, "w", encoding="utf-8") as f: f.write(code)
             await load_plugin_dynamically(name.replace(".py", ""), path)
 
 async def run():
     await app.start()
     await bot.start()
+    
+    # 🚀 YENİ: Sənin istədiyin avtomatik tənzimləmələr
+    await setup_account_automatically() 
+    
     # Bazadakı pluginləri yükləyirik
     await load_stored_plugins() 
     print(f"✅ HT USERBOT ONLINE! Kanal: {KANAL_USER}")
