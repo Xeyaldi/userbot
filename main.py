@@ -26,7 +26,7 @@ SESSION = os.environ.get("SESSION_STRING")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 MONGO_URL = os.environ.get("MONGO_URL")
 
-# Dizayn Ayarları (Dəqiq sənin istədiklərin)
+# Dizayn Ayarları
 HELP_IMG = "https://files.catbox.moe/34xlvu.jpg" 
 KANAL_URL = "https://t.me/ht_bots"
 KANAL_USER = "@ht_bots"
@@ -144,8 +144,6 @@ async def inline_handler(client, query):
 @bot.on_callback_query()
 async def callback_handler(client, callback_query):
     data = callback_query.data
-    
-    # Əsas menyu mətni və butonları (Geri qayıdanda eyni qalması üçün)
     main_text = f"[\u200b]({HELP_IMG})✨ **HT USERBOT | İdarə Paneli**\n\n👤 **İstifadəçi:** {app.me.first_name}\n🛡 **Sistem:** Aktiv\n📢 **Kanal:** {KANAL_USER}\n\n_Komandalar üçün aşağıdakı düyməyə vurun._"
     main_buttons = [
         [InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")],
@@ -172,8 +170,6 @@ async def callback_handler(client, callback_query):
     
     elif data == "close_m":
         await callback_query.message.delete()
-
-# --- Sənin Köhnə Komandaların (Heç nə silinməyib) ---
 
 @app.on_message(filters.command("htlive", prefixes=".") & filters.me)
 async def htlive(client, message):
@@ -285,15 +281,37 @@ async def tercume(client, message):
     res = GoogleTranslator(source='auto', target=lang).translate(message.reply_to_message.text)
     await message.edit(f"🌐 **Tərcümə:**\n{res}")
 
+# --- YENİLƏNMİŞ SES KOMANDASI ---
 @app.on_message(filters.command("ses", prefixes=".") & filters.me)
 async def ses(client, message):
-    text = message.reply_to_message.text if message.reply_to_message else (message.text.split(None, 1)[1] if len(message.command) > 1 else None)
-    if not text: return await message.edit("❌ Mətn yoxdur.")
-    await message.edit("🎙 Hazırlanır...")
-    tts = gTTS(text=text, lang="tr")
-    tts.save("voice.mp3")
-    await client.send_voice(message.chat.id, "voice.mp3")
-    await message.delete()
+    # Əgər yanına söz yazılıbsa və ya reply atılıbsa
+    text = ""
+    if len(message.command) > 1:
+        text = message.text.split(None, 1)[1]
+    elif message.reply_to_message and message.reply_to_message.text:
+        text = message.reply_to_message.text
+    
+    if not text: 
+        return await message.edit("❌ Mətn daxil edin və ya mesajı reply edin.")
+    
+    await message.edit("🎙 **Səs emal olunur...**")
+    
+    try:
+        # Səsi yaradırıq
+        tts = gTTS(text=text, lang="tr")
+        tts.save("voice.mp3")
+        
+        # Səsi göndəririk (Reply silinmədən)
+        await client.send_voice(
+            chat_id=message.chat.id, 
+            voice="voice.mp3",
+            reply_to_message_id=message.reply_to_message.id if message.reply_to_message else None
+        )
+        await message.delete() # Sadece komanda mesajını silirik
+    except Exception as e:
+        await message.edit(f"❌ Xəta: {e}")
+    finally:
+        if os.path.exists("voice.mp3"): os.remove("voice.mp3")
 
 @app.on_message(filters.command("afk", prefixes=".") & filters.me)
 async def afk_on(client, message):
@@ -358,14 +376,15 @@ async def load_stored_plugins():
         name, code = plugin.get("name"), plugin.get("code")
         if name and code:
             path = os.path.join("plugins", name)
+            # Kodları təkrar yazırıq
             with open(path, "w", encoding="utf-8") as f: f.write(code)
             await load_plugin_dynamically(name.replace(".py", ""), path)
 
 async def run():
-    await load_stored_plugins() 
     await app.start()
     await bot.start()
-    async for dialog in app.get_dialogs(limit=5): pass
+    # Bazadakı pluginləri yükləyirik
+    await load_stored_plugins() 
     print(f"✅ HT USERBOT ONLINE! Kanal: {KANAL_USER}")
     await idle()
     await app.stop()
