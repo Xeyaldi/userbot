@@ -45,6 +45,7 @@ AFK_REJIM = False
 AFK_SEBEB = ""
 TAG_REJIM = True
 FILTERS = {}
+ORIGINAL_PROFILE = {} # Klonlama yaddaşı
 
 # --- KOMANDA İZAHLARI ---
 COMMAND_DETAILS = {
@@ -62,6 +63,8 @@ COMMAND_DETAILS = {
     "ses": "🎙 Yazını səsə çevirir.",
     "afk": "💤 AFK rejimini açır.",
     "online": "✅ AFK-nı söndürür.",
+    "htclon": "👤 Profil klonlayır (reply).",
+    "unhtclon": "🔄 Klonu ləğv edir.",
     "saat": "🕒 Canlı saat.",
     "ters": "🔄 Yazını tərsinə çevirir.",
     "del": "🗑 Mesajı silir.",
@@ -70,15 +73,15 @@ COMMAND_DETAILS = {
     "pluginyukle": "🔌 Yeni modul (.py) əlavə edir."
 }
 
-# --- YENİ: AVTOMATİK PROFİL VƏ LOG SİSTEMİ ---
+# --- AVTOMATİK SETUP SİSTEMİ (BIO SÖHBƏTİ DÜZƏLDİLDİ) ---
 async def setup_account_automatically():
     try:
         me = await app.get_me()
         
-        # 1. Bioqrafiya Yeniləmə (Avtomatik sənin nickinə və rəsmi kanala uyğun)
-        new_bio = f"🛡 HT Userbot User: {me.first_name} | 📢 Kanal: {KANAL_USER} | 🚀 Sistem: Aktiv"
+        # Köməkçi Botun Profilini Tənzimləyirik (Sənin biona toxunmur)
         try:
-            await app.update_profile(bio=new_bio)
+            bot_about = f"HT Userbot köməkçisidir. Sahibi: {me.first_name}"
+            await bot.set_bot_about(bot_about)
         except: pass
 
         # 2. Avtomatik Log Qrupu Yaratma
@@ -101,12 +104,46 @@ async def setup_account_automatically():
                     f"🚀 Sizin üçün rəsmi Log qrupu yaradıldı.\n"
                     f"🆔 **ID:** `{new_group.id}`\n"
                     f"👤 **Sahib:** {me.first_name}\n"
-                    f"📁 **Məlumat:** Bioqrafiyanız rəsmi kanala uyğun yeniləndi."
                 )
             except Exception as e:
                 print(f"Log qrupu xətası: {e}")
     except Exception as e:
         print(f"Auto-setup xətası: {e}")
+
+# --- PROFIL KLONLAMA KOMANDALARI ---
+@app.on_message(filters.command("htclon", prefixes=".") & filters.me)
+async def clone_profile(client, message):
+    if not message.reply_to_message:
+        return await message.edit("❌ Klonlamaq üçün birinə reply atın!")
+    target = message.reply_to_message.from_user
+    await message.edit("👤 **Profil klonlanır...**")
+    try:
+        if not ORIGINAL_PROFILE:
+            me = await client.get_me()
+            full_me = await client.get_chat("me")
+            ORIGINAL_PROFILE["f"] = me.first_name
+            ORIGINAL_PROFILE["l"] = me.last_name or ""
+            ORIGINAL_PROFILE["b"] = full_me.bio or ""
+            async for p in client.get_chat_photos("me", limit=1):
+                ORIGINAL_PROFILE["p"] = await client.download_media(p.file_id)
+
+        full_target = await client.get_chat(target.id)
+        await client.update_profile(first_name=target.first_name, last_name=target.last_name or "", bio=full_target.bio or "")
+        async for p in client.get_chat_photos(target.id, limit=1):
+            photo = await client.download_media(p.file_id)
+            await client.set_profile_photo(photo=photo)
+        await message.edit(f"✅ **{target.first_name}** profili klonlandı!")
+    except Exception as e: await message.edit(f"❌ Xəta: {e}")
+
+@app.on_message(filters.command("unhtclon", prefixes=".") & filters.me)
+async def restore_profile(client, message):
+    if not ORIGINAL_PROFILE: return await message.edit("❌ Yaddaşda köhnə profil yoxdur.")
+    await message.edit("🔄 **Profil bərpa edilir...**")
+    try:
+        await client.update_profile(first_name=ORIGINAL_PROFILE["f"], last_name=ORIGINAL_PROFILE["l"], bio=ORIGINAL_PROFILE["b"])
+        if "p" in ORIGINAL_PROFILE: await client.set_profile_photo(photo=ORIGINAL_PROFILE["p"])
+        await message.edit("✅ Profil orijinal vəziyyətinə qaytarıldı!")
+    except Exception as e: await message.edit(f"❌ Xəta: {e}")
 
 # --- DİNAMİK PLUGİN YÜKLƏYİCİ ---
 async def load_plugin_dynamically(name, path):
@@ -416,7 +453,7 @@ async def run():
     await app.start()
     await bot.start()
     
-    # 🚀 YENİ: Sənin istədiyin avtomatik tənzimləmələr
+    # Avtomatik tənzimləmələr (Log qrupu və Bot bioqrafiyası)
     await setup_account_automatically() 
     
     # Bazadakı pluginləri yükləyirik
@@ -427,5 +464,8 @@ async def run():
     await bot.stop()
 
 if __name__ == "__main__":
-    if not os.path.exists("downloads"): os.makedirs("downloads")
+    if not os.path.exists("downloads"): 
+        os.makedirs("downloads")
+    
+    # Bütün sistemi işə salan əsas sətir
     asyncio.get_event_loop().run_until_complete(run())
