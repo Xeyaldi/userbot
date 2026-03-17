@@ -47,15 +47,15 @@ API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# --- Sənin AgIQY sessiyan üçün EN STABİL variant ---
+# --- Sənin AgIQY sessiyan üçün DÜZGÜN giriş ---
 app = Client(
-    SESSION_STRING,     # Pramoy sessiya kodunu bura qoyuruq
+    session_string=SESSION_STRING,  # Bax, bura 'session_string' yazdıq ki, fayl sanmasın
     api_id=API_ID,
     api_hash=API_HASH,
     workers=20
 )
 
-# --- Köməkçi bot (Xəta verməməsi üçün mütləq olmalıdır) ---
+# --- Köməkçi bot ---
 bot = Client(
     "helper_bot",
     api_id=API_ID,
