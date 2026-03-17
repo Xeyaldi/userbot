@@ -154,14 +154,17 @@ async def load_plugin_dynamically(name, path):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         sys.modules[name] = module
-        # Pluginin daxilindəki docstring-i (üç dırnaq arası yazını) help-ə salır
-        desc = module.__doc__ if module.__doc__ else "Yeni yüklənmiş modul."
-        COMMAND_DETAILS[name] = desc
+        
+        # AVTOMATIK HELP: Faylın adını komanda kimi, 
+        # faylın içindəki ilk rəyi (əgər varsa) isə izah kimi götürür.
+        description = module.__doc__ if module.__doc__ else f"{name} modulu yükləndi."
+        COMMAND_DETAILS[name] = description
+        
         return True
     except Exception as e:
-        print(f"❌ Modul xətası: {e}")
+        print(f"❌ Plugin oxunarkən xəta: {e}")
         return False
-        
+                
 @app.on_message(filters.command("pluginyukle", prefixes=".") & filters.me)
 async def install_plugin(client, message):
     if not message.reply_to_message or not message.reply_to_message.document:
