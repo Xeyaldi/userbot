@@ -38,7 +38,7 @@ mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
 
-# --- USERBOTUN QURULMASI (SƏNİN STRİNGİNƏ UYĞUN) ---
+# --- USERBOTUN QURULMASI (STRİNGİNƏ UYĞUN) ---
 app = Client(
     "userbot",
     api_id=API_ID,
