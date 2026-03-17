@@ -41,18 +41,26 @@ plugins_db = db["plugins"]
 import os
 from pyrogram import Client, idle
 
-# Heroku dəyişənləri
+# --- Heroku dəyişənləri ---
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# Sənin AgIQY sessiyan üçün V1 mühərriki
+# --- Sənin AgIQY sessiyan üçün EN STABİL variant ---
 app = Client(
-    session_name=SESSION_STRING, # V1-də 'session_string' əvəzinə bu daha yaxşıdır
+    SESSION_STRING,     # Pramoy sessiya kodunu bura qoyuruq
     api_id=API_ID,
     api_hash=API_HASH,
     workers=20
+)
+
+# --- Köməkçi bot (Xəta verməməsi üçün mütləq olmalıdır) ---
+bot = Client(
+    "helper_bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN
 )
 
 # Köməkçi bot (Inline xətalarını kəsmək üçün)
