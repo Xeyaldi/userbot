@@ -589,7 +589,7 @@ async def delete_msg(client, message):
 import importlib.util
 
 # --- İZAHLI VƏ DİNAMİK PLUGİN YÜKLƏYİCİ ---
-@app.on_message(filters.command("pluginyukle", prefixes=".") & filters.me)
+@app.on_message(filters.command(".htpinstall", prefixes=".") & filters.me)
 async def dynamic_plugin_installer(client, message):
     if not message.reply_to_message or not message.reply_to_message.document:
         return await message.edit("❌ **Səhv:** Bir `.py` faylına cavab verin.")
@@ -635,7 +635,7 @@ async def dynamic_plugin_installer(client, message):
             f"✅ **Modul Uğurla Yükləndi!**\n\n"
             f"📦 **Fayl:** `{doc.file_name}`\n"
             f"🛠 **Komandalar və İzahlar:**\n{cmd_text}\n\n"
-            f"✨ *Botu söndürməyə ehtiyac yoxdur.*"
+            f"✨ *Artıq yeni plugindən istifadə edə bilərsiniz🫡.*"
         )
 
     except Exception as e:
