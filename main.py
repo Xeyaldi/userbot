@@ -586,16 +586,8 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
-# --- HTLIVE KOMANDASI (DÜZƏLDİLMİŞ) ---
-@app.on_message(filters.command("htlive", prefixes=".") & filters.me)
-async def htlive(client, message):
-    try:
-        await message.edit("🚀 **ᎻᎢ ᏌᏚᎬᎡᏴOᎢ aktivdir!**")
-    except Exception as e:
-        print(f"Htlive xətası: {e}")
-
-# --- DİNAMİK PLUGİN YÜKLƏYİCİ (TƏLİMATLI VERSİYA) ---
-@app.on_message(filters.command(".htpinstall", prefixes=".") & filters.me)
+# --- DİNAMİK PLUGİN YÜKLƏYİCİ ---
+@app.on_message(filters.command("pluginyukle", prefixes=".") & filters.me)
 async def dynamic_plugin_installer(client, message):
     if not message.reply_to_message or not message.reply_to_message.document:
         return await message.edit("❌ **Səhv:** Bir `.py` faylına cavab verin.")
@@ -604,36 +596,29 @@ async def dynamic_plugin_installer(client, message):
     if not doc.file_name.endswith(".py"):
         return await message.edit("❌ **Səhv:** Yalnız `.py` faylı yüklənə bilər.")
 
-    plugin_name = doc.file_name
     if not os.path.exists("plugins"): os.makedirs("plugins")
-    plugin_path = os.path.join("plugins", plugin_name)
+    plugin_path = os.path.join("plugins", doc.file_name)
 
-    await message.edit(f"📥 **{plugin_name}** yüklənir...")
+    await message.edit(f"📥 **{doc.file_name}** yüklənir...")
 
     try:
-        # Faylı yükləyirik
         await message.reply_to_message.download(file_name=plugin_path)
         
-        # Pluginin içindəki komandaları tapmaq üçün faylı oxuyuruq
+        # Plugin daxilindəki komandaları tapmaq
         commands = []
         with open(plugin_path, "r", encoding="utf-8") as f:
             content = f.read()
-            # Kodun içindəki .command("...") hissələrini axtarırıq
             found_cmds = re.findall(r'command\("([^"]+)"', content)
-            for c in found_cmds:
-                commands.append(f"`.{c}`")
+            for c in found_cmds: commands.append(f"`.{c}`")
 
-        cmd_list = ", ".join(commands) if commands else "Komanda tapılmadı (avtomatik işləyir)."
+        cmd_list = ", ".join(commands) if commands else "Avtomatik funksiya."
+        instruction = f"✅ **Plugin yükləndi!**\n\n📄 **Fayl:** `{doc.file_name}`\n🛠 **Komandalar:** {cmd_list}\n💡 **Bot 10 saniyəyə aktiv olacaq.**"
 
-        # Yenidən başlayanda göstəriləcək mesajı hazırlayırıq
-                instruction = f"✅ **Plugin uğurla yükləndi!**\n\n📄 **Fayl:** `{plugin_name}`\n🛠 **Komandalar:** {cmd_list}\n💡 **10 saniyəyə komandalar aktiv olacaq.**"
-        
         with open("update.txt", "w", encoding="utf-8") as f:
             f.write(f"{message.chat.id}\n{message.id}\n{instruction}")
             
         await message.edit("⌛ **Yükləmə tamamlandı, sistem yenilənir...**")
         os._exit(0) 
-        
     except Exception as e:
         await message.edit(f"❌ **Xəta:** `{e}`")
 
@@ -644,16 +629,15 @@ async def run():
         await bot.start()
         await app.get_me()
 
+        # Restart sonrası mesajı yeniləmək
         if os.path.exists("update.txt"):
             try:
                 with open("update.txt", "r", encoding="utf-8") as f:
                     lines = f.readlines()
                     if len(lines) >= 3:
-                        chat_id = int(lines[0].strip())
-                        msg_id = int(lines[1].strip())
-                        # Burada artıq hazırladığımız təlimatı göstəririk
-                        instruction_text = "".join(lines[2:])
-                        await app.edit_message_text(chat_id, msg_id, instruction_text)
+                        chat_id, msg_id = int(lines[0]), int(lines[1])
+                        text = "".join(lines[2:])
+                        await app.edit_message_text(chat_id, msg_id, text)
                 os.remove("update.txt")
             except: pass
 
@@ -661,7 +645,13 @@ async def run():
         try: await load_stored_plugins()
         except: pass
         
+        print("✅ HT USERBOT ONLAYN")
         await idle()
     finally:
         if app.is_connected: await app.stop()
         if bot.is_connected: await bot.stop()
+
+if __name__ == "__main__":
+    if not os.path.exists("downloads"): os.makedirs("downloads")
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run())
