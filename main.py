@@ -545,4 +545,3 @@ if __name__ == "__main__":
     if not os.path.exists("downloads"): os.makedirs("downloads")
     # Yeni sessiya üçün ən etibarlı yol
     asyncio.run(run())
-    
