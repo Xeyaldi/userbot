@@ -24,7 +24,7 @@ from gtts import gTTS
 # Heroku Ayarları
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
-SESSION = os.environ.get("SESSION_STRING")
+SESSION = os.environ.get("STRING_SESSION")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 MONGO_URL = os.environ.get("MONGO_URL")
 
