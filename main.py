@@ -522,10 +522,11 @@ async def delete_msg(client, message):
 # --- SİSTEM BAŞLATMA ---
 async def run():
     try:
+        # Botları başladırıq
         await app.start()
         await bot.start()
         
-        # UPDATE MESAJI YOXLANISI
+        # UPDATE MESAJI YOXLANISI (Restartdan sonra mesajı redaktə edir)
         if os.path.exists("update.txt"):
             try:
                 with open("update.txt", "r") as f:
@@ -543,23 +544,28 @@ async def run():
         
         # load_stored_plugins funksiyasını ehtiyatla çağırırıq
         try:
+            # Əgər load_stored_plugins koddadırsa işləyəcək
             await load_stored_plugins() 
         except NameError:
             print("Xəbərdarlıq: load_stored_plugins funksiyası tapılmadı!")
         
         print(f"✅ HT USERBOT ONLINE!")
-        await idle()
+        await idle() # Botu aktiv saxlayır
         
     except Exception as e:
+        # Logda gördüyün xətanı buraya yazdırırıq
         print(f"❌ Kritik Start Xətası: {e}")
     finally:
-        # Bot sönəndə sessiyanı düzgün qapatmaq üçün
-        if app.is_connected: await app.stop()
-        if bot.is_connected: await bot.stop()
+        # Bağlanarkən xəta verməməsi üçün yoxlayaraq dayandırırıq
+        if app.is_connected:
+            await app.stop()
+        if bot.is_connected:
+            await bot.stop()
 
 if __name__ == "__main__":
+    # Downloads qovluğunu yaradırıq
     if not os.path.exists("downloads"):
         os.makedirs("downloads")
     
-    # Heroku logundakı sessiya xətasını keçmək üçün ən stabil yol:
+    # Heroku və Pyrogram V2 üçün ən stabil başlatma yolu:
     asyncio.run(run())
