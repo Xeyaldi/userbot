@@ -187,6 +187,19 @@ async def install_plugin(client, message):
     else:
         await message.edit(f"⚠️ Modul bazaya yazıldı, lakin işə salınarkən xəta baş verdi.")
 
+@app.on_message(filters.command("update", prefixes=".") & filters.me)
+async def update_bot(client, message):
+    await message.edit("🔄 **Güncəlləmə yoxlanılır və tətbiq edilir...**")
+    try:
+        # Faylları silmədən yalnız kodları yeniləyir
+        out = subprocess.check_output(["git", "pull"]).decode("utf-8")
+        if "Already up to date." in out:
+            return await message.edit("✅ **Bot artıq ən son versiyadadır.**")
+        await message.edit(f"✅ **Yeniləndi!** Bot yenidən başladılır...\n\n`{out}`")
+        os.execl(sys.executable, sys.executable, *sys.argv)
+    except Exception as e:
+        await message.edit(f"❌ **Güncəlləmə xətası:** `{e}`\n(Qeyd: Heroku-da git pull bəzən icazə istəyir)")
+        
 # --- YARDIM MENYUSU ---
 @app.on_message(filters.command("hthelp", prefixes=".") & filters.me)
 async def help_menu(client, message):
