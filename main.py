@@ -477,27 +477,7 @@ async def afk_off(client, message):
 async def afk_handler(client, message):
     if AFK_REJIM: await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
 
-# --- KÖHNƏ PLAGİNLƏRİN SƏHVİNİ TUTAN FUNKSİYA ---
-async def load_stored_plugins():
-    if not os.path.exists("plugins"): 
-        os.makedirs("plugins")
-    
-    async for plugin in plugins_db.find():
-        try:
-            name = plugin["name"]
-            code = plugin["code"]
-            # Telethon kodlarını keçmək üçün yoxlanış
-            if "telethon" in code.lower() or "events.newmessage" in code.lower():
-                print(f"⚠️ {name} Telethon modulu olduğu üçün yüklənmədi.")
-                continue
-                
-            path = os.path.join("plugins", name)
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(code)
-            await load_plugin_dynamically(name.replace(".py", ""), path)
-        except Exception as e:
-            print(f"❌ {name} bərpa edilərkən xəta: {e}")
-
+# --- SOSİAL MEDİA YÜKLƏYİCİ ---
 @app.on_message(filters.incoming & filters.text & ~filters.me)
 async def dl_handler(client, message):
     if any(x in message.text for x in ["instagram.com", "tiktok.com", "youtube.com"]):
@@ -507,41 +487,99 @@ async def dl_handler(client, message):
                 ydl.download([message.text])
             await message.reply_video(path, caption=f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿\n{KANAL_USER}")
             if os.path.exists(path): os.remove(path)
-        except Exception: pass 
+        except Exception: 
+            pass 
 
-# ... (Digər ban, kick, saat komandaların eyni qalır) ...
+# --- KOMANDALAR (BAN, KICK, SAAT, TERS, DEL) ---
+@app.on_message(filters.command("ban", prefixes=".") & filters.me)
+async def ban(client, message):
+    if message.reply_to_message:
+        await client.ban_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+        await message.edit("🚫 Ban edildi.")
 
-# --- SİSTEM BAŞLATMA ---
+@app.on_message(filters.command("kick", prefixes=".") & filters.me)
+async def kick(client, message):
+    if message.reply_to_message:
+        await client.kick_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+        await message.edit("👞 Atıldı.")
+
+@app.on_message(filters.command("saat", prefixes=".") & filters.me)
+async def saat(client, message):
+    for _ in range(5):
+        await message.edit(f"🕒 **Saat:** `{time.strftime('%H:%M:%S')}`")
+        await asyncio.sleep(1)
+
+@app.on_message(filters.command("ters", prefixes=".") & filters.me)
+async def ters(client, message):
+    text = message.reply_to_message.text if message.reply_to_message else (message.text.split(None, 1)[1] if len(message.command) > 1 else None)
+    if text: 
+        await message.edit(text[::-1])
+
+@app.on_message(filters.command("del", prefixes=".") & filters.me)
+async def delete_msg(client, message):
+    if message.reply_to_message:
+        await message.reply_to_message.delete()
+        await message.delete()
+
+# --- HTLIVE KOMANDASI (DÜZƏLDİLMİŞ) ---
+@app.on_message(filters.command("htlive", prefixes=".") & filters.me)
+async def htlive(client, message):
+    try:
+        await message.edit("🚀 **ᎻᎢ ᏌᏚᎬᎡᏴOᎢ aktivdir!**")
+    except Exception as e:
+        print(f"Htlive xətası: {e}")
+
+# --- SİSTEM BAŞLATMA (HƏR VERSİYA ÜÇÜN STABİL) ---
 async def run():
     try:
-        # Sessiyanı və botu başladırıq
         await app.start()
         await bot.start()
         
-        # Update mesajı
+        # Peer xətasını (invalid peer) önləmək üçün bot özünü tanıdır
+        try:
+            await app.get_me()
+        except:
+            pass
+
+        # Update mesajı yoxlanışı
         if os.path.exists("update.txt"):
             try:
                 with open("update.txt", "r") as f:
                     data = f.readlines()
-                    if len(data) == 2:
-                        await app.edit_message_text(int(data[0]), int(data[1]), "✅ **Bot yenidən başladıldı!**")
+                    if len(data) >= 2:
+                        chat_id = int(data[0].strip())
+                        msg_id = int(data[1].strip())
+                        await app.edit_message_text(chat_id, msg_id, "✅ **HT USERBOT ONLINE!**")
                 os.remove("update.txt")
-            except: pass
+            except:
+                pass
 
-        await setup_account_automatically() 
+        await setup_account_automatically()
         
-        # Plaginləri xəta vermədən yükləyirik
-        await load_stored_plugins() 
-        
-        print(f"✅ HT USERBOT ONLINE!")
+        # Plaginləri ehtiyatla yükləyirik
+        try:
+            await load_stored_plugins()
+        except Exception as e:
+            print(f"Plugin bərpa xətası: {e}")
+
+        print("✅ HT USERBOT ONLINE!")
         await idle()
+
     except Exception as e:
-        print(f"❌ Kritik Start Xətası: {e}")
+        print(f"❌ Kritik Başlatma Xətası: {e}")
     finally:
         if app.is_connected: await app.stop()
         if bot.is_connected: await bot.stop()
 
 if __name__ == "__main__":
-    if not os.path.exists("downloads"): os.makedirs("downloads")
-    # Yeni sessiya üçün ən etibarlı yol
-    asyncio.run(run())
+    if not os.path.exists("downloads"):
+        os.makedirs("downloads")
+    
+    # Ən etibarlı başlatma yolu:
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(run())
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        print(f"Sistem xətası: {e}")
