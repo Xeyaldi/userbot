@@ -593,57 +593,79 @@ async def htlive(client, message):
     except Exception as e:
         print(f"Htlive xətası: {e}")
 
-# --- SİSTEM BAŞLATMA (HƏR VERSİYA ÜÇÜN STABİL) ---
+# --- DİNAMİK PLUGİN YÜKLƏYİCİ (TƏLİMATLI VERSİYA) ---
+@app.on_message(filters.command(".htpinstall", prefixes=".") & filters.me)
+async def dynamic_plugin_installer(client, message):
+    if not message.reply_to_message or not message.reply_to_message.document:
+        return await message.edit("❌ **Səhv:** Bir `.py` faylına cavab verin.")
+
+    doc = message.reply_to_message.document
+    if not doc.file_name.endswith(".py"):
+        return await message.edit("❌ **Səhv:** Yalnız `.py` faylı yüklənə bilər.")
+
+    plugin_name = doc.file_name
+    if not os.path.exists("plugins"): os.makedirs("plugins")
+    plugin_path = os.path.join("plugins", plugin_name)
+
+    await message.edit(f"📥 **{plugin_name}** yüklənir...")
+
+    try:
+        # Faylı yükləyirik
+        await message.reply_to_message.download(file_name=plugin_path)
+        
+        # Pluginin içindəki komandaları tapmaq üçün faylı oxuyuruq
+        commands = []
+        with open(plugin_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            # Kodun içindəki .command("...") hissələrini axtarırıq
+            found_cmds = re.findall(r'command\("([^"]+)"', content)
+            for c in found_cmds:
+                commands.append(f"`.{c}`")
+
+        cmd_list = ", ".join(commands) if commands else "Komanda tapılmadı (avtomatik işləyir)."
+
+        # Yenidən başlayanda göstəriləcək mesajı hazırlayırıq
+        instruction = (
+            f"✅ **Plugin uğurla yükləndi!**\n\n"
+            f"📄 **Fayl:** `{plugin_name}`\n"
+            f"🛠 **Komandalar:** {cmd_list}\n"
+            f"💡 **, 10 saniyəyə komandalar aktiv olacaq.**"
+        )
+
+        with open("update.txt", "w", encoding="utf-8") as f:
+            f.write(f"{message.chat.id}\n{message.id}\n{instruction}")
+            
+        await message.edit("⌛ **Yükləmə tamamlandı, sistem yenilənir...**")
+        os._exit(0) 
+        
+    except Exception as e:
+        await message.edit(f"❌ **Xəta:** `{e}`")
+
+# --- SİSTEMİ BAŞLATAN ƏSAS FUNKSİYA ---
 async def run():
     try:
         await app.start()
         await bot.start()
-        
-        # Peer xətasını (invalid peer) önləmək üçün bot özünü tanıdır
-        try:
-            await app.get_me()
-        except:
-            pass
+        await app.get_me()
 
-        # Update mesajı yoxlanışı
         if os.path.exists("update.txt"):
             try:
-                with open("update.txt", "r") as f:
-                    data = f.readlines()
-                    if len(data) >= 2:
-                        chat_id = int(data[0].strip())
-                        msg_id = int(data[1].strip())
-                        await app.edit_message_text(chat_id, msg_id, "✅ **HT USERBOT ONLINE!**")
+                with open("update.txt", "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    if len(lines) >= 3:
+                        chat_id = int(lines[0].strip())
+                        msg_id = int(lines[1].strip())
+                        # Burada artıq hazırladığımız təlimatı göstəririk
+                        instruction_text = "".join(lines[2:])
+                        await app.edit_message_text(chat_id, msg_id, instruction_text)
                 os.remove("update.txt")
-            except:
-                pass
+            except: pass
 
         await setup_account_automatically()
+        try: await load_stored_plugins()
+        except: pass
         
-        # Plaginləri ehtiyatla yükləyirik
-        try:
-            await load_stored_plugins()
-        except Exception as e:
-            print(f"Plugin bərpa xətası: {e}")
-
-        print("✅ HT USERBOT ONLINE!")
         await idle()
-
-    except Exception as e:
-        print(f"❌ Kritik Başlatma Xətası: {e}")
     finally:
         if app.is_connected: await app.stop()
         if bot.is_connected: await bot.stop()
-
-if __name__ == "__main__":
-    if not os.path.exists("downloads"):
-        os.makedirs("downloads")
-    
-    # Ən etibarlı başlatma yolu:
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(run())
-    except KeyboardInterrupt:
-        pass
-    except Exception as e:
-        print(f"Sistem xətası: {e}")
