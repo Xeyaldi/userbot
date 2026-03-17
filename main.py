@@ -106,48 +106,7 @@ COMMAND_DETAILS = {
     "kick": "👞 İstifadəçini qrupdan atır.",
     ".htplugininsall": "🔌 Yeni modul (.py) əlavə edir."
 }
-
-# --- AVTOMATİK SETUP SİSTEMİ (BIO SÖHBƏTİ DÜZƏLDİLDİ) ---
-async def setup_account_automatically():
-    try:
-        me = await app.get_me()
-        
-        # Köməkçi Botun Profilini Tənzimləyirik (Sənin biona toxunmur)
-        try:
-            bot_about = f"HT Userbot köməkçisidir. Sahibi: {me.first_name}"
-            await bot.set_bot_about(bot_about)
-        except: pass
-
-          # 2. Avtomatik Log Qrupu Yaratma
-        try:
-            settings = await db.settings.find_one({"type": "log_group"})
-            if settings:
-                try:
-                    await app.get_chat(settings["group_id"])
-                except Exception:
-                    await db.settings.delete_one({"type": "log_group"})
-                    settings = None
-
-            if not settings:
-                group_name = f"HT LOGS | {me.first_name}"
-                group_desc = f"Bu qrup {me.first_name} üçün HT Userbot tərəfindən avtomatik yaradılmışdır.\nKanal: {KANAL_USER}"
-                new_group = await app.create_supergroup(group_name, group_desc)
-                
-                await db.settings.update_one(
-                    {"type": "log_group"}, 
-                    {"$set": {"group_id": new_group.id}}, 
-                    upsert=True
-                )
-                
-                await app.send_message(
-                    "me", 
-                    f"✅ **HT USERBOT | AVTO SETUP**\n\n"
-                    f"🚀 Sizin üçün rəsmi Log qrupu yaradıldı.\n"
-                    f"🆔 **ID:** `{new_group.id}`\n"
-                )
-        except Exception as e:
-            print(f"Log qrupu xətası: {e}")
-            
+       
 # --- PROFIL KLONLAMA KOMANDALARI ---
 @app.on_message(filters.command("htclon", prefixes=".") & filters.me)
 async def clone_profile(client, message):
