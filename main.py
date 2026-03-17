@@ -525,30 +525,41 @@ async def run():
         await app.start()
         await bot.start()
         
+        # UPDATE MESAJI YOXLANISI
         if os.path.exists("update.txt"):
             try:
                 with open("update.txt", "r") as f:
                     data = f.readlines()
                     if len(data) == 2:
-                        await app.edit_message_text(int(data[0]), int(data[1]), "✅ **Bot yenidən başladıldı!**")
+                        chat_id = int(data[0].strip())
+                        msg_id = int(data[1].strip())
+                        await app.edit_message_text(chat_id, msg_id, "✅ **Bot uğurla güncəlləndi və yenidən başladıldı!**")
                 os.remove("update.txt")
-            except: pass
+            except Exception as e:
+                print(f"Update mesaj xətası: {e}")
 
+        # Orijinal funksiyaları çağırırıq
         await setup_account_automatically() 
         
-        # load_stored_plugins koddadırsa işləyəcək
+        # load_stored_plugins funksiyasını ehtiyatla çağırırıq
         try:
             await load_stored_plugins() 
         except NameError:
-            print("load_stored_plugins funksiyası tapılmadı!")
+            print("Xəbərdarlıq: load_stored_plugins funksiyası tapılmadı!")
         
         print(f"✅ HT USERBOT ONLINE!")
         await idle()
+        
+    except Exception as e:
+        print(f"❌ Kritik Start Xətası: {e}")
     finally:
+        # Bot sönəndə sessiyanı düzgün qapatmaq üçün
         if app.is_connected: await app.stop()
         if bot.is_connected: await bot.stop()
 
 if __name__ == "__main__":
-    if not os.path.exists("downloads"): os.makedirs("downloads")
-    # Heroku və V2 sessiya stabilliyi üçün asyncio.run istifadə et
+    if not os.path.exists("downloads"):
+        os.makedirs("downloads")
+    
+    # Heroku logundakı sessiya xətasını keçmək üçün ən stabil yol:
     asyncio.run(run())
