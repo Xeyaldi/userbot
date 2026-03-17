@@ -470,34 +470,36 @@ async def delete_msg(client, message):
     if message.reply_to_message:
         await message.reply_to_message.delete()
         await message.delete()
-
-# --- SİSTEM BAŞLATMA ---
-async def load_stored_plugins():
-    if not os.path.exists("plugins"): os.makedirs("plugins")
-    async for plugin in plugins_db.find():
-        name, code = plugin.get("name"), plugin.get("code")
-        if name and code:
-            path = os.path.join("plugins", name)
-            with open(path, "w", encoding="utf-8") as f: f.write(code)
-            await load_plugin_dynamically(name.replace(".py", ""), path)
-
+# --- SİSTEM BAŞLATMA (YENİLƏNMİŞ RUN FUNKSİYASI) ---
 async def run():
     await app.start()
     await bot.start()
     
-    # Avtomatik tənzimləmələr (Log qrupu və Bot bioqrafiyası)
+    # UPDATE MESAJI YOXLANISI (Restartdan sonra redaktə edir)
+    if os.path.exists("update.txt"):
+        try:
+            with open("update.txt", "r") as f:
+                data = f.readlines()
+                if len(data) == 2:
+                    chat_id = int(data[0].strip())
+                    msg_id = int(data[1].strip())
+                    # Köhnə mesajı tapıb uğurla açıldığını bildirir
+                    await app.edit_message_text(chat_id, msg_id, "✅ **Bot uğurla güncəlləndi və yenidən başladıldı!**")
+            os.remove("update.txt") # İş bitdikdən sonra müvəqqəti faylı silirik
+        except Exception as e:
+            print(f"Update mesaj xətası: {e}")
+
+    # Sənin orijinal funksiyaların (Orijinal koddakı kimi qaldı)
     await setup_account_automatically() 
-    
-    # Bazadakı pluginləri yükləyirik
     await load_stored_plugins() 
-    print(f"✅ HT USERBOT ONLINE! Kanal: {KANAL_USER}")
+    
+    print(f"✅ HT USERBOT ONLINE!")
     await idle()
     await app.stop()
     await bot.stop()
 
 if __name__ == "__main__":
-    if not os.path.exists("downloads"): 
+    if not os.path.exists("downloads"):
         os.makedirs("downloads")
-    
-    # Bütün sistemi işə salan əsas sətir
+    # Botu işə salırıq
     asyncio.get_event_loop().run_until_complete(run())
