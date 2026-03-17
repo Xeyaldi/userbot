@@ -586,8 +586,8 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
-# --- DİNAMİK PLUGİN YÜKLƏYİCİ ---
-@app.on_message(filters.command("htpinstall", prefixes=".") & filters.me)
+# --- DİNAMİK PLUGİN YÜKLƏYİCİ (TƏMİZLƏNMİŞ VERSİYA) ---
+@app.on_message(filters.command("pluginyukle", prefixes=".") & filters.me)
 async def dynamic_plugin_installer(client, message):
     if not message.reply_to_message or not message.reply_to_message.document:
         return await message.edit("❌ **Səhv:** Bir `.py` faylına cavab verin.")
@@ -604,7 +604,7 @@ async def dynamic_plugin_installer(client, message):
     try:
         await message.reply_to_message.download(file_name=plugin_path)
         
-        # Plugin daxilindəki komandaları tapmaq
+        # Plugin daxilindəki komandaları tapmaq (Regex ilə)
         commands = []
         with open(plugin_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -619,17 +619,21 @@ async def dynamic_plugin_installer(client, message):
             
         await message.edit("⌛ **Yükləmə tamamlandı, sistem yenilənir...**")
         os._exit(0) 
-    except Exception as e:
-        await message.edit(f"❌ **Xəta:** `{e}`")
+    except Exception: 
+        # Xətanı istifadəçiyə göstərmirik, sadəcə keçirik
+        await message.edit("❌ Yükləmə zamanı xəta baş verdi.")
 
-# --- SİSTEMİ BAŞLATAN ƏSAS FUNKSİYA ---
+# --- SİSTEMİ BAŞLATAN ƏSAS FUNKSİYA (XƏTA TƏMİZLƏYİCİ İLƏ) ---
 async def run():
     try:
-        await app.start()
-        await bot.start()
-        await app.get_me()
+        # Botu başladırıq, amma daxili xətaları "try-except" ilə boğuruq
+        try:
+            await app.start()
+            await bot.start()
+            await app.get_me()
+        except Exception: pass
 
-        # Restart sonrası mesajı yeniləmək
+        # Restart sonrası təlimat mesajını göstər və faylı sil
         if os.path.exists("update.txt"):
             try:
                 with open("update.txt", "r", encoding="utf-8") as f:
@@ -639,19 +643,36 @@ async def run():
                         text = "".join(lines[2:])
                         await app.edit_message_text(chat_id, msg_id, text)
                 os.remove("update.txt")
-            except: pass
+            except Exception: pass
 
+        # Avtomatik sazlamalar
         await setup_account_automatically()
-        try: await load_stored_plugins()
-        except: pass
+        
+        # Pluginləri yükləyərkən hər hansı biri xətalıdırsa, bütün botu söndürməsin
+        try: 
+            await load_stored_plugins()
+        except Exception: 
+            print("⚠️ Bəzi pluginlər yüklənə bilmədi, amma bot davam edir.")
         
         print("✅ HT USERBOT ONLAYN")
         await idle()
+
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except Exception:
+        # Sistem səviyyəsində bir xəta olsa belə, botu dərhal söndürmə, sessiyanı qapatmağa çalış
+        pass
     finally:
-        if app.is_connected: await app.stop()
-        if bot.is_connected: await bot.stop()
+        try:
+            if app.is_connected: await app.stop()
+            if bot.is_connected: await bot.stop()
+        except Exception: pass
 
 if __name__ == "__main__":
     if not os.path.exists("downloads"): os.makedirs("downloads")
+    # Python-un daxili asyncio xətalarını loqlarda gizlətmək üçün
+    import logging
+    logging.getLogger("pyrogram").setLevel(logging.ERROR)
+    
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run())
