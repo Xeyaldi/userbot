@@ -586,10 +586,15 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
+import logging
 import importlib.util
 
-# --- İZAHLI VƏ DİNAMİK PLUGİN YÜKLƏYİCİ ---
-@app.on_message(filters.command(".htpinstall", prefixes=".") & filters.me)
+# Pyrogram-ın bezdirici daxili xətalarını (Peer ID və s.) loqlardan tamamilə silirik
+logging.getLogger("pyrogram").setLevel(logging.ERROR)
+logging.getLogger("pyrogram.session.messenger").setLevel(logging.CRITICAL)
+
+# --- DİNAMİK MODUL YÜKLƏYİCİ (RESTARTSİZ) ---
+@app.on_message(filters.command("htplugininsall", prefixes=".") & filters.me)
 async def dynamic_plugin_installer(client, message):
     if not message.reply_to_message or not message.reply_to_message.document:
         return await message.edit("❌ **Səhv:** Bir `.py` faylına cavab verin.")
@@ -605,92 +610,76 @@ async def dynamic_plugin_installer(client, message):
     await message.edit(f"📥 **{doc.file_name}** analiz edilir...")
 
     try:
-        # 1. Faylı endiririk
+        # 1. Faylı yüklə
         await message.reply_to_message.download(file_name=plugin_path)
         
-        # 2. Komandaları və onların izahlarını tapırıq
+        # 2. Komandaları və "İzah:" yazılan şərhləri tap
         cmd_info = []
         with open(plugin_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
             for i, line in enumerate(lines):
-                # Kodda .command("...") axtarırıq
                 match = re.search(r'command\("([^"]+)"', line)
                 if match:
                     cmd = match.group(1)
-                    # Bir sətir yuxarıda izah varmı deyə baxırıq
                     comment = "İzah yoxdur."
                     if i > 0 and "# İzah:" in lines[i-1]:
                         comment = lines[i-1].split("# İzah:")[1].strip()
                     cmd_info.append(f"• `.{cmd}` - {comment}")
         
-        cmd_text = "\n".join(cmd_info) if cmd_info else "Komanda tapılmadı."
+        cmd_text = "\n".join(cmd_info) if cmd_info else "• _Avtomatik modul._"
 
-        # 3. Kodu restartsız aktiv edirik
+        # 3. Kodu botu söndürmədən aktivləşdir (Dinamik Import)
         spec = importlib.util.spec_from_file_location(plugin_name, plugin_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         
-        # 4. İstifadəçiyə tam siyahı veririk
+        # 4. Modulun içindəki komandaları (handlers) Pyrogram-a tanıt
+        for attr in dir(module):
+            val = getattr(module, attr)
+            if hasattr(val, "handlers"):
+                for handler, group in val.handlers:
+                    app.add_handler(handler, group)
+
+        # 5. Uğurlu mesajı (Heç bir restart yazısı olmadan)
         await message.edit(
-            f"✅ **Modul Uğurla Yükləndi!**\n\n"
+            f"✅ **HT USERBOT - YENİ MODUL**\n\n"
             f"📦 **Fayl:** `{doc.file_name}`\n"
-            f"🛠 **Komandalar və İzahlar:**\n{cmd_text}\n\n"
-            f"✨ *Artıq yeni plugindən istifadə edə bilərsiniz🫡.*"
+            f"🛠 **Komandalar:**\n{cmd_text}\n\n"
+            f"✨ *Modul aktiv edildi.*"
         )
 
     except Exception as e:
-        await message.edit(f"❌ **Xəta:** `{e}`")
-        
-# --- SİSTEMİ BAŞLATAN ƏSAS FUNKSİYA (XƏTA TƏMİZLƏYİCİ İLƏ) ---
+        # Xəta olsa loqda qırmızı çıxmasın deyə sadə mesaj veririk
+        await message.edit(f"❌ **Modul yüklənmədi:** `{e}`")
+
+# --- SİSTEMİ BAŞLATAN ƏSAS FUNKSİYA ---
 async def run():
     try:
-        # Botu başladırıq, amma daxili xətaları "try-except" ilə boğuruq
-        try:
-            await app.start()
-            await bot.start()
-            await app.get_me()
-        except Exception: pass
-
-        # Restart sonrası təlimat mesajını göstər və faylı sil
-        if os.path.exists("update.txt"):
-            try:
-                with open("update.txt", "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-                    if len(lines) >= 3:
-                        chat_id, msg_id = int(lines[0]), int(lines[1])
-                        text = "".join(lines[2:])
-                        await app.edit_message_text(chat_id, msg_id, text)
-                os.remove("update.txt")
-            except Exception: pass
-
-        # Avtomatik sazlamalar
-        await setup_account_automatically()
+        # Botu başladırıq, daxili xətaları görməzdən gəlirik
+        await app.start()
+        await bot.start()
         
-        # Pluginləri yükləyərkən hər hansı biri xətalıdırsa, bütün botu söndürməsin
-        try: 
+        # Əvvəlcədən yüklənmiş pluginləri bazadan oxuyuruq
+        try:
             await load_stored_plugins()
-        except Exception: 
-            print("⚠️ Bəzi pluginlər yüklənə bilmədi, amma bot davam edir.")
+        except Exception:
+            pass
         
         print("✅ HT USERBOT ONLAYN")
         await idle()
-
     except (KeyboardInterrupt, SystemExit):
         pass
-    except Exception:
-        # Sistem səviyyəsində bir xəta olsa belə, botu dərhal söndürmə, sessiyanı qapatmağa çalış
-        pass
+    except Exception as e:
+        print(f"Kritik xəta: {e}")
     finally:
+        # Sönəndə yaranan o uzun loqları kəsirik
         try:
             if app.is_connected: await app.stop()
             if bot.is_connected: await bot.stop()
-        except Exception: pass
+        except:
+            pass
 
 if __name__ == "__main__":
     if not os.path.exists("downloads"): os.makedirs("downloads")
-    # Python-un daxili asyncio xətalarını loqlarda gizlətmək üçün
-    import logging
-    logging.getLogger("pyrogram").setLevel(logging.ERROR)
-    
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run())
