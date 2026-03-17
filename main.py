@@ -47,29 +47,32 @@ API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# --- Sənin AgIQY sessiyan üçün DÜZGÜN giriş ---
+import os
+from pyrogram import Client
+
+# Heroku-dan məlumatları çəkirik
+API_ID = int(os.environ.get("API_ID"))
+API_HASH = os.environ.get("API_HASH")
+SESSION_STRING = os.environ.get("SESSION_STRING")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+
+# V2-də AgIQY stringini işlətmək üçün ən düzgün quruluş:
 app = Client(
-    session_string=SESSION_STRING,  # Bax, bura 'session_string' yazdıq ki, fayl sanmasın
+    name="userbot",
     api_id=API_ID,
     api_hash=API_HASH,
-    workers=20
+    session_string=SESSION_STRING,
+    in_memory=True
 )
 
-# --- Köməkçi bot ---
+# Sənin logda xəta verən o 'bot' obyektini də bura bərpa edirik
 bot = Client(
-    "helper_bot",
+    name="helper_bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
 
-# Köməkçi bot (Inline xətalarını kəsmək üçün)
-bot = Client(
-    "helper_bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN
-)
 # Qlobal dəyişənlər
 AFK_REJIM = False
 AFK_SEBEB = ""
