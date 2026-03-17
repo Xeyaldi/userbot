@@ -586,7 +586,9 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
-# --- DİNAMİK PLUGİN YÜKLƏYİCİ (TƏMİZLƏNMİŞ VERSİYA) ---
+import importlib.util
+
+# --- İZAHLI VƏ DİNAMİK PLUGİN YÜKLƏYİCİ ---
 @app.on_message(filters.command("pluginyukle", prefixes=".") & filters.me)
 async def dynamic_plugin_installer(client, message):
     if not message.reply_to_message or not message.reply_to_message.document:
@@ -597,32 +599,48 @@ async def dynamic_plugin_installer(client, message):
         return await message.edit("❌ **Səhv:** Yalnız `.py` faylı yüklənə bilər.")
 
     if not os.path.exists("plugins"): os.makedirs("plugins")
+    plugin_name = doc.file_name.replace(".py", "")
     plugin_path = os.path.join("plugins", doc.file_name)
 
-    await message.edit(f"📥 **{doc.file_name}** yüklənir...")
+    await message.edit(f"📥 **{doc.file_name}** analiz edilir...")
 
     try:
+        # 1. Faylı endiririk
         await message.reply_to_message.download(file_name=plugin_path)
         
-        # Plugin daxilindəki komandaları tapmaq (Regex ilə)
-        commands = []
+        # 2. Komandaları və onların izahlarını tapırıq
+        cmd_info = []
         with open(plugin_path, "r", encoding="utf-8") as f:
-            content = f.read()
-            found_cmds = re.findall(r'command\("([^"]+)"', content)
-            for c in found_cmds: commands.append(f"`.{c}`")
+            lines = f.readlines()
+            for i, line in enumerate(lines):
+                # Kodda .command("...") axtarırıq
+                match = re.search(r'command\("([^"]+)"', line)
+                if match:
+                    cmd = match.group(1)
+                    # Bir sətir yuxarıda izah varmı deyə baxırıq
+                    comment = "İzah yoxdur."
+                    if i > 0 and "# İzah:" in lines[i-1]:
+                        comment = lines[i-1].split("# İzah:")[1].strip()
+                    cmd_info.append(f"• `.{cmd}` - {comment}")
+        
+        cmd_text = "\n".join(cmd_info) if cmd_info else "Komanda tapılmadı."
 
-        cmd_list = ", ".join(commands) if commands else "Avtomatik funksiya."
-        instruction = f"✅ **Plugin yükləndi!**\n\n📄 **Fayl:** `{doc.file_name}`\n🛠 **Komandalar:** {cmd_list}\n💡 **Bot 10 saniyəyə aktiv olacaq.**"
+        # 3. Kodu restartsız aktiv edirik
+        spec = importlib.util.spec_from_file_location(plugin_name, plugin_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # 4. İstifadəçiyə tam siyahı veririk
+        await message.edit(
+            f"✅ **Modul Uğurla Yükləndi!**\n\n"
+            f"📦 **Fayl:** `{doc.file_name}`\n"
+            f"🛠 **Komandalar və İzahlar:**\n{cmd_text}\n\n"
+            f"✨ *Botu söndürməyə ehtiyac yoxdur.*"
+        )
 
-        with open("update.txt", "w", encoding="utf-8") as f:
-            f.write(f"{message.chat.id}\n{message.id}\n{instruction}")
-            
-        await message.edit("⌛ **Yükləmə tamamlandı, sistem yenilənir...**")
-        os._exit(0) 
-    except Exception: 
-        # Xətanı istifadəçiyə göstərmirik, sadəcə keçirik
-        await message.edit("❌ Yükləmə zamanı xəta baş verdi.")
-
+    except Exception as e:
+        await message.edit(f"❌ **Xəta:** `{e}`")
+        
 # --- SİSTEMİ BAŞLATAN ƏSAS FUNKSİYA (XƏTA TƏMİZLƏYİCİ İLƏ) ---
 async def run():
     try:
