@@ -475,17 +475,19 @@ async def afk_off(client, message):
 
 @app.on_message(filters.incoming & filters.private & ~filters.me)
 async def afk_handler(client, message):
-    if AFK_REJIM: await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
+    if AFK_REJIM: await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}") # 478-ci sətirin davamı
 
 @app.on_message(filters.incoming & filters.text & ~filters.me)
 async def dl_handler(client, message):
     if any(x in message.text for x in ["instagram.com", "tiktok.com", "youtube.com"]):
         try:
             path = f"downloads/{message.id}.mp4"
-            with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: ydl.download([message.text])
-            await message.reply_video(path, caption=f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ \n{KANAL_USER}")
+            with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: 
+                ydl.download([message.text])
+            await message.reply_video(path, caption=f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿\n{KANAL_USER}")
             if os.path.exists(path): os.remove(path)
-        except Exception: pass 
+        except Exception: 
+            pass 
 
 @app.on_message(filters.command("ban", prefixes=".") & filters.me)
 async def ban(client, message):
@@ -508,7 +510,8 @@ async def saat(client, message):
 @app.on_message(filters.command("ters", prefixes=".") & filters.me)
 async def ters(client, message):
     text = message.reply_to_message.text if message.reply_to_message else (message.text.split(None, 1)[1] if len(message.command) > 1 else None)
-    if text: await message.edit(text[::-1])
+    if text: 
+        await message.edit(text[::-1])
 
 @app.on_message(filters.command("del", prefixes=".") & filters.me)
 async def delete_msg(client, message):
@@ -516,37 +519,36 @@ async def delete_msg(client, message):
         await message.reply_to_message.delete()
         await message.delete()
 
-# --- SİSTEM BAŞLATMA (YENİLƏNMİŞ RUN FUNKSİYASI) ---
+# --- SİSTEM BAŞLATMA ---
 async def run():
-    await app.start()
-    await bot.start()
-    
-    # UPDATE MESAJI YOXLANISI (Restartdan sonra redaktə edir)
-    if os.path.exists("update.txt"):
-        try:
-            with open("update.txt", "r") as f:
-                data = f.readlines()
-                if len(data) == 2:
-                    chat_id = int(data[0].strip())
-                    msg_id = int(data[1].strip())
-                    # Köhnə mesajı tapıb uğurla açıldığını bildirir
-                    await app.edit_message_text(chat_id, msg_id, "✅ **Bot uğurla güncəlləndi və yenidən başladıldı!**")
-            os.remove("update.txt") # İş bitdikdən sonra müvəqqəti faylı silirik
-        except Exception as e:
-            print(f"Update mesaj xətası: {e}")
+    try:
+        await app.start()
+        await bot.start()
+        
+        if os.path.exists("update.txt"):
+            try:
+                with open("update.txt", "r") as f:
+                    data = f.readlines()
+                    if len(data) == 2:
+                        await app.edit_message_text(int(data[0]), int(data[1]), "✅ **Bot yenidən başladıldı!**")
+                os.remove("update.txt")
+            except: pass
 
-    # Sənin orijinal funksiyaların (Orijinal koddakı kimi qaldı)
-    await setup_account_automatically() 
-    await load_stored_plugins() 
-    
-    print(f"✅ HT USERBOT ONLINE!")
-    await idle()
-    await app.stop()
-    await bot.stop()
+        await setup_account_automatically() 
+        
+        # load_stored_plugins koddadırsa işləyəcək
+        try:
+            await load_stored_plugins() 
+        except NameError:
+            print("load_stored_plugins funksiyası tapılmadı!")
+        
+        print(f"✅ HT USERBOT ONLINE!")
+        await idle()
+    finally:
+        if app.is_connected: await app.stop()
+        if bot.is_connected: await bot.stop()
 
 if __name__ == "__main__":
-    if not os.path.exists("downloads"):
-        os.makedirs("downloads")
-    # Botu işə salırıq
-    asyncio.get_event_loop().run_until_complete(run())
-    
+    if not os.path.exists("downloads"): os.makedirs("downloads")
+    # Heroku və V2 sessiya stabilliyi üçün asyncio.run istifadə et
+    asyncio.run(run())
