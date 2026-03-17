@@ -41,29 +41,27 @@ plugins_db = db["plugins"]
 import os
 from pyrogram import Client, idle
 
-# 1. Dəyişənləri sistemdən (Heroku) çəkirik
+# Heroku dəyişənləri
 API_ID = int(os.environ.get("API_ID"))
 API_HASH = os.environ.get("API_HASH")
 SESSION_STRING = os.environ.get("SESSION_STRING")
-BOT_TOKEN = os.environ.get("BOT_TOKEN") # Köməkçi bot üçün mütləq lazımdır
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# 2. USERBOT (Sənin atdığın stringlə işləyən hissə)
+# Sənin AgIQY sessiyan üçün V1 mühərriki
 app = Client(
-    "userbot",
+    session_name=SESSION_STRING, # V1-də 'session_string' əvəzinə bu daha yaxşıdır
     api_id=API_ID,
     api_hash=API_HASH,
-    session_string=SESSION_STRING,
-    in_memory=True
+    workers=20
 )
 
-# 3. KÖMƏKÇİ BOT (Logda xəta verən 'bot' budur)
+# Köməkçi bot (Inline xətalarını kəsmək üçün)
 bot = Client(
     "helper_bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
-
 # Qlobal dəyişənlər
 AFK_REJIM = False
 AFK_SEBEB = ""
