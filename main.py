@@ -38,9 +38,22 @@ mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
 
-# Client-lər
-app = Client("my_account", api_id=API_ID, api_hash=API_HASH, session_string=SESSION)
-bot = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+# --- USERBOTUN QURULMASI (SƏNİN STRİNGİNƏ UYĞUN) ---
+app = Client(
+    "userbot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    session_string=SESSION_STRING,
+    in_memory=True
+)
+
+# Köməkçi bot (Əgər varsa)
+bot = Client(
+    "helper_bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN
+)
 
 # Qlobal dəyişənlər
 AFK_REJIM = False
