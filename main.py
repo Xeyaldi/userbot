@@ -256,7 +256,71 @@ async def update_bot(client, message):
         os.execl(sys.executable, sys.executable, *sys.argv)
     except Exception as e:
         await msg.edit(f"❌ **Güncəlləmə zamanı xəta:** `{e}`")
+
+# --- DİNAMİK PLUGİN YÜKLƏYİCİ ---
+@app.on_message(filters.command("htpluginyukle", prefixes=".") & filters.me)
+async def dynamic_plugin_installer(client, message):
+    if not message.reply_to_message or not message.reply_to_message.document:
+        return await message.edit("❌ **Səhv:** Bir `.py` faylına cavab verərək yazın.")
+
+    doc = message.reply_to_message.document
+    if not doc.file_name.endswith(".py"):
+        return await message.edit("❌ **Səhv:** Yalnız `.py` faylları yüklənə bilər.")
+
+    plugin_name = doc.file_name
+    plugin_path = os.path.join("plugins", plugin_name)
+
+    # Sənin istədiyin "Yüklənir" mətni
+    await message.edit(f"📥 **{plugin_name}** yüklənir, zəhmət olmasa gözləyin...")
+
+    try:
+        if not os.path.exists("plugins"):
+            os.makedirs("plugins")
+
+        # Faylı yükləyirik
+        await message.reply_to_message.download(file_name=plugin_path)
         
+        # Yenidən başlayanda mesajı tanıması üçün qeyd aparırıq
+        with open("update.txt", "w") as f:
+            f.write(f"{message.chat.id}\n{message.id}")
+            
+        # Botu yenidən başladırıq ki, plugin aktiv olsun
+        import sys
+        os.execl(sys.executable, sys.executable, *sys.argv)
+        
+    except Exception as e:
+        await message.edit(f"❌ **Xəta baş verdi:**\n`{e}`")
+
+# --- SİSTEMİ BAŞLATAN ƏSAS FUNKSİYA ---
+async def run():
+    try:
+        await app.start()
+        await bot.start()
+        await app.get_me()
+
+        # Plugin və ya Update sonrası "Yükləndi/Yeniləndi" bildirişi
+        if os.path.exists("update.txt"):
+            try:
+                with open("update.txt", "r") as f:
+                    data = f.readlines()
+                    if len(data) >= 2:
+                        chat_id = int(data[0].strip())
+                        msg_id = int(data[1].strip())
+                        # Sənin istədiyin "Yükləndi" təsdiqi
+                        await app.edit_message_text(chat_id, msg_id, "✅ **Plugin uğurla yükləndi və aktiv edildi!**")
+                os.remove("update.txt")
+            except: pass
+
+        await setup_account_automatically()
+        try: await load_stored_plugins()
+        except: pass
+        
+        print("✅ HT USERBOT AKTİVDİR")
+        await idle()
+    finally:
+        if app.is_connected: await app.stop()
+        if bot.is_connected: await bot.stop()
+                 
 # --- YARDIM MENYUSU ---
 @app.on_message(filters.command("hthelp", prefixes=".") & filters.me)
 async def help_menu(client, message):
