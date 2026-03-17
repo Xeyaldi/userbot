@@ -587,7 +587,7 @@ async def delete_msg(client, message):
         await message.delete()
 
 # --- DİNAMİK PLUGİN YÜKLƏYİCİ ---
-@app.on_message(filters.command("pluginyukle", prefixes=".") & filters.me)
+@app.on_message(filters.command("htpinstall", prefixes=".") & filters.me)
 async def dynamic_plugin_installer(client, message):
     if not message.reply_to_message or not message.reply_to_message.document:
         return await message.edit("❌ **Səhv:** Bir `.py` faylına cavab verin.")
