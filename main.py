@@ -195,6 +195,20 @@ async def load_plugin_dynamically(name, path):
     except Exception as e:
         print(f"❌ Plugin oxunarkən xəta: {e}")
         return False
+
+# --- PLAGINLƏRI BAZADAN YÜKLƏMƏ FUNKSIYASI (ƏLAVƏ EDİLDİ) ---
+async def load_stored_plugins():
+    if not os.path.exists("plugins"): os.makedirs("plugins")
+    async for plugin in plugins_db.find():
+        try:
+            name = plugin["name"]
+            code = plugin["code"]
+            path = os.path.join("plugins", name)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(code)
+            await load_plugin_dynamically(name.replace(".py", ""), path)
+        except Exception as e:
+            print(f"Plugin bərpa xətası: {e}")
                 
 @app.on_message(filters.command("pluginyukle", prefixes=".") & filters.me)
 async def install_plugin(client, message):
@@ -461,7 +475,7 @@ async def afk_off(client, message):
 
 @app.on_message(filters.incoming & filters.private & ~filters.me)
 async def afk_handler(client, message):
-    if AFK_REJIM: await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
+    if AFK_REJIM:await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
 
 @app.on_message(filters.incoming & filters.text & ~filters.me)
 async def dl_handler(client, message):
@@ -469,7 +483,7 @@ async def dl_handler(client, message):
         try:
             path = f"downloads/{message.id}.mp4"
             with yt_dlp.YoutubeDL({'format': 'best', 'outtmpl': path, 'quiet': True}) as ydl: ydl.download([message.text])
-            await message.reply_video(path, caption=f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ 🗿\n{KANAL_USER}")
+            await message.reply_video(path, caption=f"ᎻᎢ ᏌᏚᎬᎡᏴOᎢ \n{KANAL_USER}")
             if os.path.exists(path): os.remove(path)
         except Exception: pass 
 
@@ -501,6 +515,7 @@ async def delete_msg(client, message):
     if message.reply_to_message:
         await message.reply_to_message.delete()
         await message.delete()
+
 # --- SİSTEM BAŞLATMA (YENİLƏNMİŞ RUN FUNKSİYASI) ---
 async def run():
     await app.start()
@@ -534,3 +549,4 @@ if __name__ == "__main__":
         os.makedirs("downloads")
     # Botu işə salırıq
     asyncio.get_event_loop().run_until_complete(run())
+    
