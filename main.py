@@ -1,6 +1,7 @@
 import os
 import asyncio
 import time
+import re
 import random
 import wikipedia
 import sys
@@ -625,13 +626,8 @@ async def dynamic_plugin_installer(client, message):
         cmd_list = ", ".join(commands) if commands else "Komanda tapılmadı (avtomatik işləyir)."
 
         # Yenidən başlayanda göstəriləcək mesajı hazırlayırıq
-        instruction = (
-            f"✅ **Plugin uğurla yükləndi!**\n\n"
-            f"📄 **Fayl:** `{plugin_name}`\n"
-            f"🛠 **Komandalar:** {cmd_list}\n"
-            f"💡 **, 10 saniyəyə komandalar aktiv olacaq.**"
-        )
-
+                instruction = f"✅ **Plugin uğurla yükləndi!**\n\n📄 **Fayl:** `{plugin_name}`\n🛠 **Komandalar:** {cmd_list}\n💡 **10 saniyəyə komandalar aktiv olacaq.**"
+        
         with open("update.txt", "w", encoding="utf-8") as f:
             f.write(f"{message.chat.id}\n{message.id}\n{instruction}")
             
