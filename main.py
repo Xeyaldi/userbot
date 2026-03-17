@@ -192,16 +192,25 @@ async def install_plugin(client, message):
 
 @app.on_message(filters.command("update", prefixes=".") & filters.me)
 async def update_bot(client, message):
-    await message.edit("🔄 **Güncəlləmə yoxlanılır və tətbiq edilir...**")
+    msg = await message.edit("🔄 **Güncəlləmə yoxlanılır...**")
     try:
-        # Faylları silmədən yalnız kodları yeniləyir
-        out = subprocess.check_output(["git", "pull"]).decode("utf-8")
-        if "Already up to date." in out:
-            return await message.edit("✅ **Bot artıq ən son versiyadadır.**")
-        await message.edit(f"✅ **Yeniləndi!** Bot yenidən başladılır...\n\n`{out}`")
+        import subprocess
+        process = subprocess.Popen(["git", "pull"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        
+        if "Already up to date." in stdout.decode():
+            return await msg.edit("✅ **Bot artıq ən son versiyadadır.**")
+        
+        # Yenilənmə bitəndə bu mesajın ID-sini yadda saxlayırıq ki, açılanda redaktə edək
+        await msg.edit(f"✅ **Güncəlləndi!** Bot restart olunur...\n\n`{stdout.decode()[:100]}`")
+        
+        # Hansı qrupda və hansı mesajı redaktə edəcəyimizi qeyd edirik
+        with open("update.txt", "w") as f:
+            f.write(f"{msg.chat.id}\n{msg.id}")
+
         os.execl(sys.executable, sys.executable, *sys.argv)
     except Exception as e:
-        await message.edit(f"❌ **Güncəlləmə xətası:** `{e}`\n(Qeyd: Heroku-da git pull bəzən icazə istəyir)")
+        await msg.edit(f"❌ **Güncəlləmə zamanı xəta:** `{e}`")
         
 # --- YARDIM MENYUSU ---
 @app.on_message(filters.command("hthelp", prefixes=".") & filters.me)
