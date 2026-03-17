@@ -3,6 +3,8 @@ import asyncio
 import time
 import random
 import wikipedia
+import sys
+import subprocess
 import requests
 import yt_dlp
 import motor.motor_asyncio
