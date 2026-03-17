@@ -475,7 +475,7 @@ async def afk_off(client, message):
 
 @app.on_message(filters.incoming & filters.private & ~filters.me)
 async def afk_handler(client, message):
-    if AFK_REJIM:await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
+    if AFK_REJIM: await message.reply(f"🤖 AFK-yam: {AFK_SEBEB}")
 
 @app.on_message(filters.incoming & filters.text & ~filters.me)
 async def dl_handler(client, message):
