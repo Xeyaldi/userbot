@@ -38,21 +38,21 @@ mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URL)
 db = mongo_client["xeyal_userbot"]
 plugins_db = db["plugins"]
 
-# --- USERBOTUN QURULMASI (STRİNGİNƏ UYĞUN) ---
+import os
+from pyrogram import Client
+
+# 1. Öncə dəyişənlər gəlməlidir
+API_ID = int(os.environ.get("API_ID"))
+API_HASH = os.environ.get("API_HASH")
+SESSION_STRING = os.environ.get("SESSION_STRING")
+
+# 2. BAX BU KODU BURAYA, DƏYİŞƏNLƏRDƏN DƏRHAL SONRA QOY:
 app = Client(
     "userbot",
     api_id=API_ID,
     api_hash=API_HASH,
     session_string=SESSION_STRING,
     in_memory=True
-)
-
-# Köməkçi bot (Əgər varsa)
-bot = Client(
-    "helper_bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN
 )
 
 # Qlobal dəyişənlər
