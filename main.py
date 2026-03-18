@@ -74,6 +74,15 @@ bot = Client(
     bot_token=BOT_TOKEN
 )
 
+# --- GLOBAL PREMIUM HELPER ---
+# Bu funksiya bütün .py pluginlərində avtomatik əlçatandır
+def P(emoji_id, text=""):
+    return f"<tg-emoji emoji-id='{emoji_id}'>{text if text else ' '}</tg-emoji>"
+
+# Pyrogram-ın bütün pluginlərdə HTML-i tanıması üçün bunu da bura qoyuruq
+from pyrogram.enums import ParseMode
+HTML = ParseMode.HTML
+
 # Qlobal dəyişənlər
 AFK_REJIM = False
 AFK_SEBEB = ""
