@@ -74,10 +74,31 @@ bot = Client(
     bot_token=BOT_TOKEN
 )
 
-# --- GLOBAL PREMIUM HELPER ---
-# Bu funksiya bütün .py pluginlərində avtomatik əlçatandır
-def P(emoji_id, text=""):
-    return f"<tg-emoji emoji-id='{emoji_id}'>{text if text else ' '}</tg-emoji>"
+# --- UNIVERSAL PREMIUM DESTEK SİSTEMİ ---
+from pyrogram.enums import ParseMode
+
+# Orijinal funksiyaları yadda saxlayırıq
+_orig_edit = app.edit_message_text
+_orig_send = app.send_message
+
+async def smart_edit(self, chat_id, message_id, text, *args, **kwargs):
+    # Əgər mətndə <tg-emoji (premium kodu) varsa, avtomatik HTML qoşur
+    if "<tg-emoji" in str(text):
+        kwargs["parse_mode"] = ParseMode.HTML
+    return await _orig_edit(chat_id, message_id, text, *args, **kwargs)
+
+async def smart_send(self, chat_id, text, *args, **kwargs):
+    if "<tg-emoji" in str(text):
+        kwargs["parse_mode"] = ParseMode.HTML
+    return await _orig_send(chat_id, text, *args, **kwargs)
+
+# Botun daxili funksiyalarını yeniləyirik
+app.edit_message_text = smart_edit.__get__(app, Client)
+app.send_message = smart_send.__get__(app, Client)
+
+# Bütün pluginlərdə işləməsi üçün qısa funksiya
+import builtins
+builtins.P = lambda eid, alt="✨": f"<tg-emoji emoji-id='{eid}'>{alt}</tg-emoji>"
 
 # Pyrogram-ın bütün pluginlərdə HTML-i tanıması üçün bunu da bura qoyuruq
 from pyrogram.enums import ParseMode
