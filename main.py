@@ -484,32 +484,54 @@ async def yazi(client, message):
     font = metn.replace('a', 'α').replace('e', 'є').replace('i', 'ι')
     await message.edit(f"✨ {font}")
 
-@app.on_message(filters.command("tercume", prefixes=".") & filters.me)
-async def tercume(client, message):
-    if not message.reply_to_message: return
-    lang = message.command[1] if len(message.command) > 1 else "az"
-    res = GoogleTranslator(source='auto', target=lang).translate(message.reply_to_message.text)
-    await message.edit(f"🌐 **Tərcümə:**\n{res}")
-
 @app.on_message(filters.command("ses", prefixes=".") & filters.me)
 async def ses(client, message):
+    args = message.command
+    lang = "tr"  # Default dil
     text = ""
-    if len(message.command) > 1:
-        text = message.text.split(None, 1)[1]
-    elif message.reply_to_message and message.reply_to_message.text:
-        text = message.reply_to_message.text
-    
+
+    # Dillər lüğəti
+    supported_langs = {
+        "tr": "tr", "az": "az", "en": "en", 
+        "fr": "fr", "es": "es", "zh": "zh-CN", 
+        "ja": "ja", "ko": "ko"
+    }
+
+    # Əgər komandadan sonra dil kodu yazılıbsa (məsələn: .ses en salam)
+    if len(args) > 1 and args[1].lower() in supported_langs:
+        lang = supported_langs[args[1].lower()]
+        if len(args) > 2:
+            text = " ".join(args[2:])
+    elif len(args) > 1:
+        text = " ".join(args[1:])
+
+    # Əgər reply verilibsə və mətni yoxdursa (tərcümə üçün)
+    if message.reply_to_message:
+        reply_text = message.reply_to_message.text or message.reply_to_message.caption
+        if reply_text:
+            # Əgər komanda ilə yeni mətn yazılmayıbsa, reply-dakı mətni tərcümə et
+            if not text:
+                await message.edit(f"🌐 `{lang}` dilinə tərcümə olunur və səsləndirilir...")
+                text = GoogleTranslator(source='auto', target=lang).translate(reply_text)
+            else:
+                # Əgər həm reply var, həm də yeni mətn yazılıbsa, yazılanı səsləndir
+                pass
+
     if not text: 
-        return await message.edit("❌ Mətn daxil edin və ya mesajı reply edin.")
+        return await message.edit("❌ Mətn daxil edin və ya mesajı reply edin. Nümunə: `.ses en Hello` və ya `.ses fr [reply]`")
     
     await message.edit("🎙 **Səs emal olunur...**")
     
     try:
-        tts = gTTS(text=text, lang="tr")
+        # gTTS ilə səsləndirmə
+        tts = gTTS(text=text, lang=lang)
         tts.save("voice.mp3")
+        
+        # Səsi göndərərkən (əvvəl danışdığımız premium emoji dəstəyini də bura qata bilərsən)
         await client.send_voice(
             chat_id=message.chat.id, 
             voice="voice.mp3",
+            caption=f"📝 **Tərcümə/Mətn:** {text[:100]}...",
             reply_to_message_id=message.reply_to_message.id if message.reply_to_message else None
         )
         await message.delete() 
@@ -517,7 +539,7 @@ async def ses(client, message):
         await message.edit(f"❌ Xəta: {e}")
     finally:
         if os.path.exists("voice.mp3"): os.remove("voice.mp3")
-
+            
 @app.on_message(filters.command("afk", prefixes=".") & filters.me)
 async def afk_on(client, message):
     global AFK_REJIM, AFK_SEBEB
