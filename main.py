@@ -4,6 +4,8 @@ import time
 import re
 import random
 import wikipedia
+from dotenv import load_dotenv
+load_dotenv() # VPS-dəki .env faylını oxumaq üçün mütləqdir
 import sys
 import subprocess
 import requests
