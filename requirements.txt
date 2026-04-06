@@ -9,3 +9,4 @@ deep-translator
 wikipedia
 requests
 beautifulsoup4
+python-dotenv
