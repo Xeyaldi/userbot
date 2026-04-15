@@ -330,7 +330,6 @@ async def callback_handler(client, callback_query):
     )
     main_buttons = [
         [InlineKeyboardButton("🛠 Komandalar", callback_data="view_cmds")],
-        [InlineKeyboardButton("💎 Premium Emoji", callback_data="view_pe")],
         [InlineKeyboardButton("📢 RƏSMİ KANAL", url=KANAL_URL), InlineKeyboardButton("❌ Bağla", callback_data="close_m")]
     ]
 
