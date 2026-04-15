@@ -155,7 +155,6 @@ COMMAND_DETAILS = {
     "del":            "🗑 Mesajı silir.",
     "ban":            "🚫 İstifadəçini ban edir.",
     "kick":           "👞 İstifadəçini qrupdan atır.",
-    "pe":             "💎 Premium emoji göndərir. (.pe list - siyahı)",
     "petext":         "💎 Mətn + premium emoji. (.petext fire Salam)",
     "htplugininsall": "🔌 Yeni modul (.py) əlavə edir.",
     "hthelp":         "📋 Bu menyu.",
