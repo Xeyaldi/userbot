@@ -60,25 +60,6 @@ bot = Client(
     bot_token=BOT_TOKEN
 )
 
-# --- PREMIUM EMOJİ SİSTEMİ ---
-# İstifadə: .pe fire  |  .pe heart  |  .pe star  |  .pe crown  |  .pe 100
-PREMIUM_EMOJIS = {
-    "fire":   5377755993769565568,
-    "heart":  5471952986970267163,
-    "star":   5431815452437257407,
-    "100":    5373141891321699086,
-    "crown":  5420323339727990684,
-    "check":  5436040291507247408,
-    "cool":   5373123633415723730,
-    "angry":  5431815452437257408,
-    "cry":    5373141891321699087,
-    "laugh":  5471952986970267164,
-}
-
-def make_premium_emoji(emoji_id: int, alt: str = "⭐") -> str:
-    """Premium emoji HTML tegi qaytarır"""
-    return f"<tg-emoji emoji-id='{emoji_id}'>{alt}</tg-emoji>"
-
 # Bütün pluginlərdə istifadə üçün qısa funksiya
 import builtins
 builtins.P = lambda eid, alt="✨": f"<tg-emoji emoji-id='{eid}'>{alt}</tg-emoji>"
