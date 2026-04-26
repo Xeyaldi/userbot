@@ -25,11 +25,11 @@ from deep_translator import GoogleTranslator
 from gtts import gTTS
 
 # --- KONFİQURASİYA ---
-API_ID = int(os.environ.get("API_ID"))
-API_HASH = os.environ.get("API_HASH")
-SESSION_STRING = os.environ.get("SESSION_STRING")
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-MONGO_URL = os.environ.get("MONGO_URL")
+API_ID = 34628590
+API_HASH = "78a65ef180771575a50fcd350f027e9d"
+SESSION_STRING = "AgIQY-4ASzQmnc1LvG5HJTyfLXx_yH6bP3_H1XdcmwTId1fOuWCJh8WgAvrDvi_GRyEA7wTugCiA5-zcggAYIdgUNi6rPCnWlTDNJJV3MPkXPkT_YZnzH2vlw8UzpBd7s5Un4r8H11vR6Vn0FiQ9aZycOLWEoPJEnfeQz4fBfMA9UfmAcAhFuF4H0GuAnYBRnGtm5-owLTTSLD0LxSGZMLwOE1ibvDKVE9-qJd1jbebmTCiED0fV_l6fr1V7OHW1dyEStQOt-UhDuqD4dMHxBQwSYrYZyGcKQrMk457Pw2rNHY9JEmFNmB7BmJAFlMPnJX2kHk8P5XRYva9FVDMZFPYr2toixwAAAAHy-VoLAA"
+BOT_TOKEN = "8604212969:AAEkhYVi9kErtiwjJJilGw3uEvt5WsBBcrw"
+MONGO_URL = "mongodb+srv://cabbarovxeyal32_db_user:Xeyal032aze@cluster0.f3gogmg.mongodb.net/?appName=Cluster0"
 
 HELP_IMG = "https://files.catbox.moe/34xlvu.jpg"
 KANAL_URL = "https://t.me/ht_bots"
